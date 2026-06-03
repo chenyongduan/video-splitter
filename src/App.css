@@ -1,0 +1,23 @@
+/* Global reset for Video Splitter */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ant Design overrides */
+.ant-layout-header {
+  height: 56px;
+  line-height: 56px;
+}
+
+.ant-card-head-title {
+  font-size: 15px;
+}
