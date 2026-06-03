@@ -17,15 +17,15 @@ import {
   InboxOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
+import { getVideoInfo, splitVideo } from "./utils/ffmpeg";
 import VideoPlayer from "./components/VideoPlayer";
 import SegmentTable from "./components/SegmentTable";
 import ProgressDialog from "./components/ProgressDialog";
 import { useAppStore } from "./store/segmentStore";
 import { formatTime } from "./utils/format";
-import type { VideoInfo, SplitProgress } from "./types";
 
 const { Header, Content } = Layout;
 const { Text } = Typography;
@@ -54,16 +54,6 @@ const App: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
-  // Listen to split progress events
-  useEffect(() => {
-    const unlisten = listen<SplitProgress>("split-progress", (event) => {
-      setProgress(event.payload);
-    });
-    return () => {
-      unlisten.then((fn) => fn());
-    };
-  }, [setProgress]);
-
   const loadVideoFile = useCallback(
     async (filePath: string) => {
       const ext = filePath.split(".").pop()?.toLowerCase() || "";
@@ -75,9 +65,7 @@ const App: React.FC = () => {
       const fileName = filePath.split(/[/\\]/).pop() || "video.mp4";
 
       try {
-        const info = await invoke<VideoInfo>("get_video_info", {
-          path: filePath,
-        });
+        const info = await getVideoInfo(filePath);
         setVideo(filePath, fileName, info);
         message.success(`已加载: ${fileName}`);
       } catch (err) {
@@ -107,26 +95,24 @@ const App: React.FC = () => {
 
   // Handle drag & drop via Tauri's drag-drop events
   useEffect(() => {
-    const unlisten = listen<string[]>("tauri://drag-drop", async (event) => {
-      setIsDragOver(false);
-      const files = event.payload;
-      if (files && files.length > 0) {
-        await loadVideoFile(files[0]);
+    const appWindow = getCurrentWindow();
+
+    const unlisten = appWindow.onDragDropEvent((event) => {
+      if (event.payload.type === "drop") {
+        setIsDragOver(false);
+        const files = event.payload.paths;
+        if (files && files.length > 0) {
+          loadVideoFile(files[0]);
+        }
+      } else if (event.payload.type === "hover") {
+        setIsDragOver(true);
+      } else if (event.payload.type === "leave") {
+        setIsDragOver(false);
       }
-    });
-
-    const unlistenHover = listen("tauri://drag-hover", () => {
-      setIsDragOver(true);
-    });
-
-    const unlistenLeave = listen("tauri://drag-leave", () => {
-      setIsDragOver(false);
     });
 
     return () => {
       unlisten.then((fn) => fn());
-      unlistenHover.then((fn) => fn());
-      unlistenLeave.then((fn) => fn());
     };
   }, [loadVideoFile]);
 
@@ -173,9 +159,8 @@ const App: React.FC = () => {
     setSplitResult(null);
 
     try {
-      const result = await invoke<string>("split_video", {
-        inputPath: videoPath,
-        segments,
+      const result = await splitVideo(videoPath, segments, (p) => {
+        setProgress(p);
       });
       setSplitResult(result);
       message.success("切割完成！");
