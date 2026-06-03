@@ -32,3 +32,6 @@ src-tauri/binaries/*.exe
 *.dmg
 *.msi
 *.exe
+
+# Exception: track the FFmpeg sidecar binary
+!src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe
