@@ -17,7 +17,6 @@ import {
   InboxOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getVideoInfo, splitVideo } from "./utils/ffmpeg";
@@ -104,7 +103,7 @@ const App: React.FC = () => {
         if (files && files.length > 0) {
           loadVideoFile(files[0]);
         }
-      } else if (event.payload.type === "hover") {
+      } else if (event.payload.type === "over") {
         setIsDragOver(true);
       } else if (event.payload.type === "leave") {
         setIsDragOver(false);
