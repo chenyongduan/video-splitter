@@ -1,7 +1,7 @@
 import React from "react";
 import { Button, Space, Typography, Tag, Alert, Spin } from "antd";
 import { DeleteOutlined, FolderOutlined } from "@ant-design/icons";
-import { open } from "@tauri-apps/plugin-opener";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useAppStore } from "../../store/segmentStore";
 import { formatTime } from "../../utils/format";
 import AudioDropZone from "./AudioDropZone";
@@ -46,8 +46,7 @@ const AudioPage: React.FC = () => {
 
   const handleOpenDir = async () => {
     if (audioProcessResult?.outputPath) {
-      const dir = audioProcessResult.outputPath.replace(/[/\\][^/\\]+$/, "");
-      await open(dir);
+      await revealItemInDir(audioProcessResult.outputPath);
     }
   };
 
