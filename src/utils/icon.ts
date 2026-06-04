@@ -1,5 +1,5 @@
 import { Command } from "@tauri-apps/plugin-shell";
-import { mkdir, writeFile } from "@tauri-apps/plugin-fs";
+import { mkdir, writeFile, copyFile, readFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 
 // ===== iOS =====
@@ -225,18 +225,9 @@ export async function exportTauriIcons(
     fileCount++;
   }
 
-  // icon.icns：直接复制源图（Tauri CLI 的做法）
+  // icon.icns：直接复制源图 PNG 并重命名（Tauri CLI 的做法）
   const icnsPath = await join(tauriDir, "icon.icns");
-  const cmd = Command.sidecar("binaries/ffmpeg", [
-    "-y",
-    "-i",
-    inputPath,
-    icnsPath,
-  ]);
-  const result = await cmd.execute();
-  if (result.code !== 0) {
-    throw new Error(`生成 icon.icns 失败: ${result.stderr}`);
-  }
+  await copyFile(inputPath, icnsPath);
   fileCount++;
 
   return { outputDir: tauriDir, fileCount };
