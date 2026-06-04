@@ -1,0 +1,160 @@
+import React, { useCallback } from "react";
+import { Button, Space, Typography, Spin, message } from "antd";
+import {
+  DeleteOutlined,
+  FolderOpenOutlined,
+} from "@ant-design/icons";
+import { open } from "@tauri-apps/plugin-dialog";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { useAppStore } from "../../store/segmentStore";
+import { formatFileSize } from "../../utils/format";
+import { getImageInfo } from "../../utils/image";
+import IconDropZone from "./IconDropZone";
+import IconExporter from "./IconExporter";
+
+const { Text } = Typography;
+
+const ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg"];
+
+const IconPage: React.FC = () => {
+  const isIconLoaded = useAppStore((s) => s.isIconLoaded);
+  const iconFileName = useAppStore((s) => s.iconFileName);
+  const iconPath = useAppStore((s) => s.iconPath);
+  const iconInfo = useAppStore((s) => s.iconInfo);
+  const isIconProcessing = useAppStore((s) => s.isIconProcessing);
+  const clearIcon = useAppStore((s) => s.clearIcon);
+  const setIconFile = useAppStore((s) => s.setIconFile);
+
+  const handleLoadImage = useCallback(async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [
+          {
+            name: "图片文件",
+            extensions: ALLOWED_EXTENSIONS,
+          },
+        ],
+      });
+      if (!selected) return;
+
+      const filePath = selected as string;
+      const ext = filePath.split(".").pop()?.toLowerCase() || "";
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        message.error(`不支持的格式: .${ext}，仅支持 PNG、JPG 格式`);
+        return;
+      }
+
+      const fileName = filePath.split(/[/\\]/).pop() || "icon.png";
+      const info = await getImageInfo(filePath);
+
+      if (info.width !== info.height) {
+        message.error("图片必须是正方形（宽高相等）");
+        return;
+      }
+      if (info.width !== 512 && info.width !== 1024) {
+        message.error("图片尺寸必须是 512×512 或 1024×1024");
+        return;
+      }
+
+      setIconFile(filePath, fileName, {
+        width: info.width,
+        height: info.height,
+        format: info.format,
+        fileSize: info.fileSize,
+      });
+    } catch (err) {
+      message.error(`加载失败: ${err}`);
+    }
+  }, [setIconFile]);
+
+  if (!isIconLoaded) {
+    return (
+      <div
+        style={{
+          padding: 16,
+          maxWidth: 960,
+          margin: "0 auto",
+          width: "100%",
+        }}
+      >
+        <IconDropZone />
+      </div>
+    );
+  }
+
+  const src = convertFileSrc(iconPath);
+
+  return (
+    <div
+      style={{
+        padding: 16,
+        maxWidth: 960,
+        margin: "0 auto",
+        width: "100%",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Text strong ellipsis style={{ maxWidth: 600 }}>
+            {iconFileName}
+          </Text>
+          {iconInfo && (
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              {iconInfo.width}×{iconInfo.height} ·{" "}
+              {iconInfo.format.toUpperCase()} ·{" "}
+              {formatFileSize(iconInfo.fileSize)}
+            </Text>
+          )}
+        </div>
+        <Space>
+          <Button icon={<FolderOpenOutlined />} onClick={handleLoadImage}>
+            选择图片
+          </Button>
+          <Button danger icon={<DeleteOutlined />} onClick={clearIcon}>
+            清空
+          </Button>
+        </Space>
+      </div>
+
+      {/* Image Preview */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "12px 0",
+          marginBottom: 12,
+          background: "#fafafa",
+          borderRadius: 8,
+        }}
+      >
+        <img
+          src={src}
+          alt="预览"
+          style={{
+            maxWidth: 200,
+            maxHeight: 200,
+            objectFit: "contain",
+            borderRadius: 4,
+          }}
+        />
+      </div>
+
+      {/* Export Panel */}
+      <Spin spinning={isIconProcessing} tip="导出中...">
+        <IconExporter />
+      </Spin>
+    </div>
+  );
+};
+
+export default IconPage;
