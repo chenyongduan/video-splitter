@@ -100,7 +100,14 @@ pnpm tauri build
 
 本应用通过 Tauri sidecar 机制调用 FFmpeg 和 FFprobe，需要手动下载二进制文件并放入 `src-tauri/binaries/` 目录。
 
-**下载地址：** [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)（选择 `ffmpeg-release-essentials.zip`，内含 ffmpeg 和 ffprobe）
+**各平台下载地址：**
+
+| 平台 | 下载源 |
+|------|--------|
+| **Windows x64** | [gyan.dev](https://www.gyan.dev/ffmpeg/builds/)（选择 `ffmpeg-release-essentials.zip`，内含 ffmpeg + ffprobe） |
+| **macOS (Apple Silicon)** | 通过 Homebrew 安装后复制：`brew install ffmpeg`，然后从 `/opt/homebrew/bin/` 复制 ffmpeg 和 ffprobe |
+| **macOS (Intel)** | [evermeet.cx](https://evermeet.cx/ffmpeg/)（分别下载 ffmpeg 和 ffprobe 的 zip/7z） |
+| **Linux x64** | [johnvansickle.com](https://johnvansickle.com/ffmpeg/)（选择 `ffmpeg-release-amd64-static.tar.xz`，内含 ffmpeg + ffprobe） |
 
 **文件命名规则：**
 
@@ -114,6 +121,12 @@ Tauri sidecar 要求文件名包含目标平台三元组。下载后需按以下
 | Linux x64 | `ffmpeg-x86_64-unknown-linux-gnu` | `ffprobe-x86_64-unknown-linux-gnu` |
 
 将对应平台的 `ffmpeg`（或 `ffmpeg.exe`）和 `ffprobe`（或 `ffprobe.exe`）重命名后放入 `src-tauri/binaries/` 目录即可。
+
+**macOS 额外步骤：** 下载的二进制可能被系统标记为隔离，需执行：
+```bash
+xattr -dr com.apple.quarantine src-tauri/binaries/ffmpeg-*
+xattr -dr com.apple.quarantine src-tauri/binaries/ffprobe-*
+```
 
 ### 仅前端开发
 
