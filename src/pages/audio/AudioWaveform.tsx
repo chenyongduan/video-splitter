@@ -173,7 +173,14 @@ const AudioWaveform: React.FC = () => {
             {isPlaying ? "暂停" : "播放"}
           </Button>
           {audioFunctionTab === "trim" && (
-            <Button type="primary" onClick={handlePlayRegion}>
+            <Button
+              onClick={handlePlayRegion}
+              style={{
+                background: "#fff",
+                color: "#333",
+                borderColor: "#d9d9d9",
+              }}
+            >
               播放选中
             </Button>
           )}
