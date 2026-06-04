@@ -29,7 +29,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout style={{ minHeight: "100vh", background: "#f5f5f5" }}>
+    <Layout style={{ minHeight: "100vh", background: "#f5f5f5", userSelect: "none", WebkitUserSelect: "none" }}>
       <Header
         style={{
           background: "#fff",

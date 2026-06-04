@@ -60,6 +60,7 @@ interface AppState {
   imageRotation: number;
   imageFlipH: boolean;
   imageFlipV: boolean;
+  imageCropRect: { x: number; y: number; w: number; h: number };
 
   // Video actions
   setVideo: (path: string, fileName: string, info: VideoInfo) => void;
@@ -100,6 +101,7 @@ interface AppState {
   setImageRotation: (val: number) => void;
   setImageFlipH: (val: boolean) => void;
   setImageFlipV: (val: boolean) => void;
+  setImageCropRect: (rect: { x: number; y: number; w: number; h: number }) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -150,6 +152,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   imageRotation: 0,
   imageFlipH: false,
   imageFlipV: false,
+  imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
 
   // Video actions
   setVideo: (path, fileName, info) =>
@@ -293,6 +296,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       imageRotation: 0,
       imageFlipH: false,
       imageFlipV: false,
+      imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
     }),
 
   setImageFunctionTab: (tab) => set({ imageFunctionTab: tab }),
@@ -301,4 +305,5 @@ export const useAppStore = create<AppState>((set, get) => ({
   setImageRotation: (val) => set({ imageRotation: val }),
   setImageFlipH: (val) => set({ imageFlipH: val }),
   setImageFlipV: (val) => set({ imageFlipV: val }),
+  setImageCropRect: (rect) => set({ imageCropRect: rect }),
 }));

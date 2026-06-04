@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Button, InputNumber, Space, Typography, message } from "antd";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
@@ -11,30 +11,27 @@ const ImageCropper: React.FC = () => {
   const imageInfo = useAppStore((s) => s.imageInfo);
   const setProcessing = useAppStore((s) => s.setImageProcessing);
   const setProcessResult = useAppStore((s) => s.setImageProcessResult);
+  const cropRect = useAppStore((s) => s.imageCropRect);
+  const setCropRect = useAppStore((s) => s.setImageCropRect);
 
-  const [cropX, setCropX] = useState(0);
-  const [cropY, setCropY] = useState(0);
-  const [cropW, setCropW] = useState(0);
-  const [cropH, setCropH] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = React.useState(false);
 
   // 初始化为图片完整尺寸
   useEffect(() => {
-    if (imageInfo) {
-      setCropW(imageInfo.width);
-      setCropH(imageInfo.height);
+    if (imageInfo && cropRect.w === 0 && cropRect.h === 0) {
+      setCropRect({ x: 0, y: 0, w: imageInfo.width, h: imageInfo.height });
     }
-  }, [imageInfo]);
+  }, [imageInfo, cropRect.w, cropRect.h, setCropRect]);
 
   const handleCrop = async () => {
     if (!imagePath || !imageInfo) return;
-    if (cropW <= 0 || cropH <= 0) {
+    if (cropRect.w <= 0 || cropRect.h <= 0) {
       message.warning("请输入有效的裁剪区域");
       return;
     }
     if (
-      cropX + cropW > imageInfo.width ||
-      cropY + cropH > imageInfo.height
+      cropRect.x + cropRect.w > imageInfo.width ||
+      cropRect.y + cropRect.h > imageInfo.height
     ) {
       message.warning("裁剪区域超出图片范围");
       return;
@@ -57,10 +54,10 @@ const ImageCropper: React.FC = () => {
       setProcessing(true);
 
       await cropImage(imagePath, outputPath, {
-        x: cropX,
-        y: cropY,
-        width: cropW,
-        height: cropH,
+        x: cropRect.x,
+        y: cropRect.y,
+        width: cropRect.w,
+        height: cropRect.h,
       });
 
       setProcessResult({
@@ -71,7 +68,7 @@ const ImageCropper: React.FC = () => {
         inputSize: imageInfo.fileSize,
         outputSize: 0,
         inputDimensions: `${imageInfo.width}×${imageInfo.height}`,
-        outputDimensions: `${cropW}×${cropH}`,
+        outputDimensions: `${cropRect.w}×${cropRect.h}`,
         taskType: "crop",
       });
 
@@ -107,8 +104,16 @@ const ImageCropper: React.FC = () => {
             <InputNumber
               min={0}
               max={imageInfo ? imageInfo.width - 1 : 9999}
-              value={cropX}
-              onChange={(v) => setCropX(v ?? 0)}
+              value={cropRect.x}
+              onChange={(v) => {
+                const newX = v ?? 0;
+                const maxW = imageInfo ? imageInfo.width - newX : cropRect.w;
+                setCropRect({
+                  ...cropRect,
+                  x: newX,
+                  w: Math.min(cropRect.w, maxW),
+                });
+              }}
               style={{ width: 80 }}
             />
           </Space>
@@ -117,8 +122,16 @@ const ImageCropper: React.FC = () => {
             <InputNumber
               min={0}
               max={imageInfo ? imageInfo.height - 1 : 9999}
-              value={cropY}
-              onChange={(v) => setCropY(v ?? 0)}
+              value={cropRect.y}
+              onChange={(v) => {
+                const newY = v ?? 0;
+                const maxH = imageInfo ? imageInfo.height - newY : cropRect.h;
+                setCropRect({
+                  ...cropRect,
+                  y: newY,
+                  h: Math.min(cropRect.h, maxH),
+                });
+              }}
               style={{ width: 80 }}
             />
           </Space>
@@ -126,9 +139,11 @@ const ImageCropper: React.FC = () => {
             <Text style={{ fontSize: 13, color: "#666" }}>宽度：</Text>
             <InputNumber
               min={1}
-              max={imageInfo ? imageInfo.width : 9999}
-              value={cropW}
-              onChange={(v) => setCropW(v ?? 0)}
+              max={imageInfo ? imageInfo.width - cropRect.x : 9999}
+              value={cropRect.w}
+              onChange={(v) =>
+                setCropRect({ ...cropRect, w: v ?? 0 })
+              }
               style={{ width: 80 }}
             />
           </Space>
@@ -136,9 +151,11 @@ const ImageCropper: React.FC = () => {
             <Text style={{ fontSize: 13, color: "#666" }}>高度：</Text>
             <InputNumber
               min={1}
-              max={imageInfo ? imageInfo.height : 9999}
-              value={cropH}
-              onChange={(v) => setCropH(v ?? 0)}
+              max={imageInfo ? imageInfo.height - cropRect.y : 9999}
+              value={cropRect.h}
+              onChange={(v) =>
+                setCropRect({ ...cropRect, h: v ?? 0 })
+              }
               style={{ width: 80 }}
             />
           </Space>
@@ -146,10 +163,7 @@ const ImageCropper: React.FC = () => {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Button onClick={() => {
             if (imageInfo) {
-              setCropX(0);
-              setCropY(0);
-              setCropW(imageInfo.width);
-              setCropH(imageInfo.height);
+              setCropRect({ x: 0, y: 0, w: imageInfo.width, h: imageInfo.height });
             }
           }}>
             重置
