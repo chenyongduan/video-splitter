@@ -50,7 +50,7 @@ export interface VideoProcessResult {
 }
 
 // ===== Global =====
-export type AppTab = "video" | "audio" | "image";
+export type AppTab = "video" | "audio" | "image" | "icon";
 
 // ===== Audio =====
 export interface AudioInfo {
@@ -143,4 +143,19 @@ export interface ImageProcessResult {
   inputDimensions: string;
   outputDimensions: string;
   taskType: ImageTaskType;
+}
+
+// ===== Icon =====
+
+export interface IconInfo {
+  width: number;
+  height: number;
+  format: string;
+  fileSize: number;
+}
+
+export interface IconExportResult {
+  platform: "ios" | "android";
+  outputDir: string;
+  fileCount: number;
 }
