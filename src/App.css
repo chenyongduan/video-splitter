@@ -1,4 +1,4 @@
-/* Global reset for Video Splitter */
+/* Global reset for MediaKit */
 * {
   margin: 0;
   padding: 0;
@@ -20,4 +20,18 @@ body {
 
 .ant-card-head-title {
   font-size: 15px;
+}
+
+/* MediaKit tab bar */
+.ant-tabs-nav {
+  margin-bottom: 0 !important;
+}
+
+.ant-tabs-tab {
+  padding: 8px 0 !important;
+}
+
+/* Audio waveform container */
+audio {
+  display: none;
 }

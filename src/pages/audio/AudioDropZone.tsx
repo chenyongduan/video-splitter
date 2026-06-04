@@ -1,0 +1,108 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Card, message } from "antd";
+import { InboxOutlined } from "@ant-design/icons";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open } from "@tauri-apps/plugin-dialog";
+import { getAudioInfo } from "../../utils/audio";
+import { useAppStore } from "../../store/segmentStore";
+
+const SUPPORTED_AUDIO_EXTENSIONS = ["mp3", "wav", "aac", "m4a", "flac", "ogg"];
+
+const AudioDropZone: React.FC = () => {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const setAudioFile = useAppStore((s) => s.setAudioFile);
+
+  const loadAudioFile = useCallback(
+    async (filePath: string) => {
+      const ext = filePath.split(".").pop()?.toLowerCase() || "";
+      if (!SUPPORTED_AUDIO_EXTENSIONS.includes(ext)) {
+        message.error(
+          `不支持的格式: .${ext}，仅支持 ${SUPPORTED_AUDIO_EXTENSIONS.join(", ")}`,
+        );
+        return;
+      }
+
+      const fileName = filePath.split(/[/\\]/).pop() || "audio.mp3";
+
+      try {
+        const info = await getAudioInfo(filePath);
+        setAudioFile(filePath, fileName, info);
+        message.success(`已加载: ${fileName}`);
+      } catch (err) {
+        message.error(`加载失败: ${err}，文件可能已损坏`);
+      }
+    },
+    [setAudioFile],
+  );
+
+  const handleSelectFile = useCallback(async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [
+          {
+            name: "音频文件",
+            extensions: SUPPORTED_AUDIO_EXTENSIONS,
+          },
+        ],
+      });
+      if (!selected) return;
+      await loadAudioFile(selected as string);
+    } catch (err) {
+      message.error(`选择文件失败: ${err}`);
+    }
+  }, [loadAudioFile]);
+
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+
+    const unlisten = appWindow.onDragDropEvent((event) => {
+      if (event.payload.type === "drop") {
+        setIsDragOver(false);
+        const files = event.payload.paths;
+        if (files && files.length > 0) {
+          loadAudioFile(files[0]);
+        }
+      } else if (event.payload.type === "over") {
+        setIsDragOver(true);
+      } else if (event.payload.type === "leave") {
+        setIsDragOver(false);
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [loadAudioFile]);
+
+  return (
+    <Card style={{ marginTop: 48 }}>
+      <div
+        ref={dropRef}
+        onClick={handleSelectFile}
+        style={{
+          padding: "60px 0",
+          textAlign: "center",
+          cursor: "pointer",
+          borderRadius: 8,
+          border: `2px dashed ${isDragOver ? "#1890ff" : "#d9d9d9"}`,
+          background: isDragOver ? "#e6f7ff" : "transparent",
+          transition: "all 0.3s",
+        }}
+      >
+        <InboxOutlined
+          style={{ fontSize: 48, color: isDragOver ? "#1890ff" : "#999" }}
+        />
+        <p style={{ fontSize: 16, marginTop: 16 }}>
+          拖拽音频文件到此处，或点击选择文件
+        </p>
+        <p style={{ color: "#999" }}>
+          支持 MP3、WAV、AAC、M4A、FLAC、OGG 格式
+        </p>
+      </div>
+    </Card>
+  );
+};
+
+export default AudioDropZone;
