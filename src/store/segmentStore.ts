@@ -7,6 +7,8 @@ import type {
   VideoProcessResult,
   AudioInfo,
   AudioProcessResult,
+  ImageInfo,
+  ImageProcessResult,
   AppTab,
 } from "../types";
 
@@ -47,6 +49,18 @@ interface AppState {
   audioProcessResult: AudioProcessResult | null;
   isAudioProcessing: boolean;
 
+  // Image state
+  imagePath: string;
+  imageFileName: string;
+  imageInfo: ImageInfo | null;
+  isImageLoaded: boolean;
+  imageFunctionTab: "convert" | "compress" | "resize" | "crop" | "rotate";
+  imageProcessResult: ImageProcessResult | null;
+  isImageProcessing: boolean;
+  imageRotation: number;
+  imageFlipH: boolean;
+  imageFlipV: boolean;
+
   // Video actions
   setVideo: (path: string, fileName: string, info: VideoInfo) => void;
   clearVideo: () => void;
@@ -76,6 +90,16 @@ interface AppState {
   clearAudio: () => void;
   setAudioProcessing: (val: boolean) => void;
   setAudioProcessResult: (result: AudioProcessResult | null) => void;
+
+  // Image actions
+  setImageFile: (path: string, fileName: string, info: ImageInfo) => void;
+  clearImage: () => void;
+  setImageFunctionTab: (tab: "convert" | "compress" | "resize" | "crop" | "rotate") => void;
+  setImageProcessing: (val: boolean) => void;
+  setImageProcessResult: (result: ImageProcessResult | null) => void;
+  setImageRotation: (val: number) => void;
+  setImageFlipH: (val: boolean) => void;
+  setImageFlipV: (val: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -114,6 +138,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   audioFunctionTab: "convert",
   audioProcessResult: null,
   isAudioProcessing: false,
+
+  // Image
+  imagePath: "",
+  imageFileName: "",
+  imageInfo: null,
+  isImageLoaded: false,
+  imageFunctionTab: "convert",
+  imageProcessResult: null,
+  isImageProcessing: false,
+  imageRotation: 0,
+  imageFlipH: false,
+  imageFlipV: false,
 
   // Video actions
   setVideo: (path, fileName, info) =>
@@ -234,4 +270,35 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setAudioProcessing: (val) => set({ isAudioProcessing: val }),
   setAudioProcessResult: (result) => set({ audioProcessResult: result }),
+
+  // Image actions
+  setImageFile: (path, fileName, info) =>
+    set({
+      imagePath: path,
+      imageFileName: fileName,
+      imageInfo: info,
+      isImageLoaded: true,
+      imageProcessResult: null,
+    }),
+
+  clearImage: () =>
+    set({
+      imagePath: "",
+      imageFileName: "",
+      imageInfo: null,
+      isImageLoaded: false,
+      imageFunctionTab: "convert",
+      imageProcessResult: null,
+      isImageProcessing: false,
+      imageRotation: 0,
+      imageFlipH: false,
+      imageFlipV: false,
+    }),
+
+  setImageFunctionTab: (tab) => set({ imageFunctionTab: tab }),
+  setImageProcessing: (val) => set({ isImageProcessing: val }),
+  setImageProcessResult: (result) => set({ imageProcessResult: result }),
+  setImageRotation: (val) => set({ imageRotation: val }),
+  setImageFlipH: (val) => set({ imageFlipH: val }),
+  setImageFlipV: (val) => set({ imageFlipV: val }),
 }));

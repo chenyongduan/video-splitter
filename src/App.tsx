@@ -1,14 +1,32 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Layout, Tabs } from "antd";
 import { useAppStore } from "./store/segmentStore";
 import VideoPage from "./pages/video";
 import AudioPage from "./pages/audio";
+import ImagePage from "./pages/image";
+import type { AppTab } from "./types";
 
 const { Header, Content } = Layout;
+
+const STORAGE_KEY = "mediakit_active_tab";
 
 const App: React.FC = () => {
   const activeTab = useAppStore((s) => s.activeTab);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
+
+  // 启动时从 localStorage 恢复 tab
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved && ["video", "audio", "image"].includes(saved)) {
+      setActiveTab(saved as AppTab);
+    }
+  }, [setActiveTab]);
+
+  const handleTabChange = (key: string) => {
+    const tab = key as AppTab;
+    setActiveTab(tab);
+    localStorage.setItem(STORAGE_KEY, tab);
+  };
 
   return (
     <Layout style={{ minHeight: "100vh", background: "#f5f5f5" }}>
@@ -34,11 +52,11 @@ const App: React.FC = () => {
         </span>
         <Tabs
           activeKey={activeTab}
-          onChange={(key) => setActiveTab(key as "video" | "audio")}
+          onChange={handleTabChange}
           items={[
             { key: "video", label: "视频处理" },
             { key: "audio", label: "音频处理" },
-            { key: "image", label: "图片处理", disabled: true },
+            { key: "image", label: "图片处理" },
           ]}
           style={{ marginBottom: 0 }}
         />
@@ -47,6 +65,7 @@ const App: React.FC = () => {
       <Content>
         {activeTab === "video" && <VideoPage />}
         {activeTab === "audio" && <AudioPage />}
+        {activeTab === "image" && <ImagePage />}
       </Content>
     </Layout>
   );

@@ -29,3 +29,12 @@ export function parseTime(str: string): number {
 export function generateFilename(start: number, end: number): string {
   return `${Math.round(start)}-${Math.round(end)}.mp4`;
 }
+
+/**
+ * Format file size to human-readable string
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}

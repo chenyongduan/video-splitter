@@ -17,11 +17,20 @@ const AudioConverter: React.FC = () => {
     (s) => s.setAudioProcessResult,
   );
 
-  const [outputFormat, setOutputFormat] = useState<string>("wav");
+  const [outputFormat, setOutputFormat] = useState<string>(() => {
+    const current = audioInfo?.format?.toLowerCase() || "";
+    if (current === "wav") return "mp3";
+    return "wav";
+  });
 
   const availableFormats = OUTPUT_FORMATS.filter(
     (f) => f !== audioInfo?.format?.toLowerCase(),
   );
+
+  // 如果当前选中的格式被过滤掉了（和源格式相同），自动切换
+  if (!availableFormats.includes(outputFormat) && availableFormats.length > 0) {
+    setOutputFormat(availableFormats[0]);
+  }
 
   const handleConvert = useCallback(async () => {
     if (!audioPath || !audioInfo) return;

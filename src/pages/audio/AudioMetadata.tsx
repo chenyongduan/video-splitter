@@ -1,6 +1,6 @@
 import React from "react";
 import { useAppStore } from "../../store/segmentStore";
-import { formatTime } from "../../utils/format";
+import { formatTime, formatFileSize } from "../../utils/format";
 
 const AudioMetadata: React.FC = () => {
   const audioInfo = useAppStore((s) => s.audioInfo);
@@ -12,6 +12,7 @@ const AudioMetadata: React.FC = () => {
   const items = [
     { label: "时长", value: formatTime(audioInfo.duration) },
     { label: "格式", value: audioInfo.format.toUpperCase() },
+    { label: "文件大小", value: formatFileSize(audioInfo.fileSize) },
     { label: "比特率", value: `${audioInfo.bitrate}kbps` },
     { label: "采样率", value: `${audioInfo.sampleRate}Hz` },
     { label: "声道", value: channelLabel },
@@ -30,7 +31,7 @@ const AudioMetadata: React.FC = () => {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)",
+          gridTemplateColumns: "repeat(6, 1fr)",
           gap: 12,
         }}
       >

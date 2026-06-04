@@ -4,6 +4,7 @@ export interface VideoInfo {
   height: number;
   fps: number;
   format: string;
+  fileSize: number;
 }
 
 export interface Segment {
@@ -49,7 +50,7 @@ export interface VideoProcessResult {
 }
 
 // ===== Global =====
-export type AppTab = "video" | "audio";
+export type AppTab = "video" | "audio" | "image";
 
 // ===== Audio =====
 export interface AudioInfo {
@@ -90,4 +91,56 @@ export interface AudioProcessResult {
   outputSampleRate: number;
   duration: number;
   taskType: AudioTaskType;
+}
+
+// ===== Image =====
+
+export interface ImageInfo {
+  width: number;
+  height: number;
+  format: string;
+  fileSize: number;
+  colorMode: string;
+  bitDepth: number;
+}
+
+export type ImageTaskType = "convert" | "compress" | "resize" | "crop" | "rotate";
+
+export interface ImageConvertParams {
+  outputFormat: string;
+}
+
+export interface ImageCompressParams {
+  quality: number;
+}
+
+export interface ImageResizeParams {
+  width: number;
+  height: number;
+  keepAspectRatio: boolean;
+}
+
+export interface ImageCropParams {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface ImageRotateParams {
+  rotation: 0 | 90 | 180 | 270;
+  flipHorizontal: boolean;
+  flipVertical: boolean;
+}
+
+export interface ImageProcessResult {
+  inputPath: string;
+  outputPath: string;
+  inputFormat: string;
+  outputFormat: string;
+  inputSize: number;
+  outputSize: number;
+  inputDimensions: string;
+  outputDimensions: string;
+  taskType: ImageTaskType;
 }

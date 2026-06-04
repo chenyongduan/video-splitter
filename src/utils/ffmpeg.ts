@@ -46,7 +46,7 @@ export async function getVideoInfo(filePath: string): Promise<VideoInfo> {
     if (den > 0) fps = num / den;
   }
 
-  return { duration, width, height, fps, format: formatName };
+  return { duration, width, height, fps, format: formatName, fileSize: Number(data.format?.size) || 0 };
 }
 
 /**
