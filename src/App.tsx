@@ -29,7 +29,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout style={{ minHeight: "100vh", background: "#f5f5f5", userSelect: "none", WebkitUserSelect: "none" }}>
+    <Layout style={{ height: "100vh", overflow: "hidden", background: "#f5f5f5", userSelect: "none", WebkitUserSelect: "none" }}>
       <Header
         style={{
           background: "#fff",
@@ -38,6 +38,7 @@ const App: React.FC = () => {
           alignItems: "center",
           gap: 24,
           boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+          flexShrink: 0,
         }}
       >
         <span
@@ -62,7 +63,7 @@ const App: React.FC = () => {
         />
       </Header>
 
-      <Content>
+      <Content style={{ overflow: "auto", flex: 1 }}>
         {activeTab === "video" && <VideoPage />}
         {activeTab === "audio" && <AudioPage />}
         {activeTab === "image" && <ImagePage />}
