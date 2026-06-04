@@ -254,6 +254,7 @@ const ImagePreview: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgDisplay, setImgDisplay] = useState<ImgDisplay>({ width: 0, height: 0, offsetX: 0, offsetY: 0 });
+  const [baseHeight, setBaseHeight] = useState(0);
 
   // 直接测量 img 元素相对于容器的位置和尺寸
   const measureImg = useCallback(() => {
@@ -304,6 +305,10 @@ const ImagePreview: React.FC = () => {
 
   const showCrop = imageFunctionTab === "crop";
 
+  // 旋转 90/270 度时交换 maxWidth / maxHeight 约束
+  const absRotation = showTransform ? (((imageRotation % 360) + 360) % 360) : 0;
+  const isRotated = absRotation === 90 || absRotation === 270;
+
   return (
     <div
       ref={containerRef}
@@ -318,15 +323,22 @@ const ImagePreview: React.FC = () => {
         borderRadius: 8,
         overflow: "hidden",
         userSelect: "none",
+        minHeight: baseHeight || undefined,
       }}
     >
       <img
         ref={imgRef}
         src={src}
         alt="预览"
-        onLoad={measureImg}
+        onLoad={() => {
+          measureImg();
+          // 记录初始容器高度（未旋转时）
+          if (containerRef.current && !baseHeight) {
+            setBaseHeight(containerRef.current.clientHeight);
+          }
+        }}
         style={{
-          maxWidth: "100%",
+          maxWidth: isRotated ? 320 : "100%",
           maxHeight: 320,
           objectFit: "contain",
           borderRadius: 4,
