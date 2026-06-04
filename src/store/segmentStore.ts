@@ -9,6 +9,8 @@ import type {
   AudioProcessResult,
   ImageInfo,
   ImageProcessResult,
+  IconInfo,
+  IconExportResult,
   AppTab,
 } from "../types";
 
@@ -102,6 +104,20 @@ interface AppState {
   setImageFlipH: (val: boolean) => void;
   setImageFlipV: (val: boolean) => void;
   setImageCropRect: (rect: { x: number; y: number; w: number; h: number }) => void;
+
+  // Icon state
+  iconPath: string;
+  iconFileName: string;
+  iconInfo: IconInfo | null;
+  isIconLoaded: boolean;
+  isIconProcessing: boolean;
+  iconProcessResult: IconExportResult | null;
+
+  // Icon actions
+  setIconFile: (path: string, fileName: string, info: IconInfo) => void;
+  clearIcon: () => void;
+  setIconProcessing: (val: boolean) => void;
+  setIconProcessResult: (result: IconExportResult | null) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -153,6 +169,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   imageFlipH: false,
   imageFlipV: false,
   imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
+
+  // Icon
+  iconPath: "",
+  iconFileName: "",
+  iconInfo: null,
+  isIconLoaded: false,
+  isIconProcessing: false,
+  iconProcessResult: null,
 
   // Video actions
   setVideo: (path, fileName, info) =>
@@ -306,4 +330,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   setImageFlipH: (val) => set({ imageFlipH: val }),
   setImageFlipV: (val) => set({ imageFlipV: val }),
   setImageCropRect: (rect) => set({ imageCropRect: rect }),
+
+  // Icon actions
+  setIconFile: (path, fileName, info) =>
+    set({
+      iconPath: path,
+      iconFileName: fileName,
+      iconInfo: info,
+      isIconLoaded: true,
+      iconProcessResult: null,
+    }),
+
+  clearIcon: () =>
+    set({
+      iconPath: "",
+      iconFileName: "",
+      iconInfo: null,
+      isIconLoaded: false,
+      isIconProcessing: false,
+      iconProcessResult: null,
+    }),
+
+  setIconProcessing: (val) => set({ isIconProcessing: val }),
+  setIconProcessResult: (result) => set({ iconProcessResult: result }),
 }));
