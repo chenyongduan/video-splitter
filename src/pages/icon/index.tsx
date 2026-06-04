@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { Button, Space, Typography, Spin, message } from "antd";
+import { Button, Space, Typography, Spin, Tag, message } from "antd";
 import {
   DeleteOutlined,
   FolderOpenOutlined,
@@ -104,11 +104,17 @@ const IconPage: React.FC = () => {
             {iconFileName}
           </Text>
           {iconInfo && (
-            <Text type="secondary" style={{ fontSize: 13 }}>
-              {iconInfo.width}×{iconInfo.height} ·{" "}
-              {iconInfo.format.toUpperCase()} ·{" "}
-              {formatFileSize(iconInfo.fileSize)}
-            </Text>
+            <>
+              <Tag color="blue">
+                {iconInfo.width}×{iconInfo.height}
+              </Tag>
+              <Tag color="blue">
+                {iconInfo.format.toUpperCase()}
+              </Tag>
+              <Tag color="orange">
+                {formatFileSize(iconInfo.fileSize)}
+              </Tag>
+            </>
           )}
         </div>
         <Space>
