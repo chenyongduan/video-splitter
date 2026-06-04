@@ -41,19 +41,15 @@ const IconPage: React.FC = () => {
       const filePath = selected as string;
       const ext = filePath.split(".").pop()?.toLowerCase() || "";
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        message.error(`不支持的格式: .${ext}，仅支持 PNG、JPG 格式`);
+        message.error("只支持 512×512 或 1024×1024 的 PNG、JPG 格式");
         return;
       }
 
       const fileName = filePath.split(/[/\\]/).pop() || "icon.png";
       const info = await getImageInfo(filePath);
 
-      if (info.width !== info.height) {
-        message.error("图片必须是正方形（宽高相等）");
-        return;
-      }
-      if (info.width !== 512 && info.width !== 1024) {
-        message.error("图片尺寸必须是 512×512 或 1024×1024");
+      if (info.width !== info.height || (info.width !== 512 && info.width !== 1024)) {
+        message.error("只支持 512×512 或 1024×1024 的 PNG、JPG 格式");
         return;
       }
 
@@ -64,7 +60,7 @@ const IconPage: React.FC = () => {
         fileSize: info.fileSize,
       });
     } catch (err) {
-      message.error(`加载失败: ${err}`);
+      message.error("只支持 512×512 或 1024×1024 的 PNG、JPG 格式");
     }
   }, [setIconFile]);
 

@@ -10,14 +10,13 @@ const ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg"];
 
 const IconDropZone: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
   const setIconFile = useAppStore((s) => s.setIconFile);
 
   const loadIconFile = useCallback(
     async (filePath: string) => {
       const ext = filePath.split(".").pop()?.toLowerCase() || "";
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        setErrorMsg(`不支持的格式: .${ext}，仅支持 PNG、JPG 格式`);
+        message.error("只支持 512×512 或 1024×1024 的 PNG、JPG 格式");
         return;
       }
 
@@ -26,19 +25,11 @@ const IconDropZone: React.FC = () => {
       try {
         const info = await getImageInfo(filePath);
 
-        // 校验：必须是正方形
-        if (info.width !== info.height) {
-          setErrorMsg("图片必须是正方形（宽高相等）");
+        if (info.width !== info.height || (info.width !== 512 && info.width !== 1024)) {
+          message.error("只支持 512×512 或 1024×1024 的 PNG、JPG 格式");
           return;
         }
 
-        // 校验：尺寸必须是 512 或 1024
-        if (info.width !== 512 && info.width !== 1024) {
-          setErrorMsg("图片尺寸必须是 512×512 或 1024×1024");
-          return;
-        }
-
-        setErrorMsg("");
         setIconFile(filePath, fileName, {
           width: info.width,
           height: info.height,
@@ -46,7 +37,7 @@ const IconDropZone: React.FC = () => {
           fileSize: info.fileSize,
         });
       } catch (err) {
-        setErrorMsg(`加载失败: ${err}，文件可能已损坏`);
+        message.error("只支持 512×512 或 1024×1024 的 PNG、JPG 格式");
       }
     },
     [setIconFile],
@@ -113,13 +104,8 @@ const IconDropZone: React.FC = () => {
           拖拽图片到此处，或点击选择文件
         </p>
         <p style={{ color: "#999" }}>
-          支持 512×512 或 1024×1024 的 PNG、JPG 格式
+          只支持 512×512 或 1024×1024 的 PNG、JPG 格式
         </p>
-        {errorMsg && (
-          <p style={{ color: "#ff4d4f", marginTop: 4 }}>
-            {errorMsg}
-          </p>
-        )}
       </div>
     </Card>
   );
