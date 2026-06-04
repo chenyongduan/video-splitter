@@ -158,6 +158,16 @@ const IconExporter: React.FC = () => {
     { filename: "icon.ico", size: 256 },
     { filename: "icon.png", size: 1024 },
     { filename: "icon.icns", size: 1024 },
+    { filename: "Square30x30Logo.png", size: 30 },
+    { filename: "Square44x44Logo.png", size: 44 },
+    { filename: "Square71x71Logo.png", size: 71 },
+    { filename: "Square89x89Logo.png", size: 89 },
+    { filename: "Square107x107Logo.png", size: 107 },
+    { filename: "Square142x142Logo.png", size: 142 },
+    { filename: "Square150x150Logo.png", size: 150 },
+    { filename: "Square284x284Logo.png", size: 284 },
+    { filename: "Square310x310Logo.png", size: 310 },
+    { filename: "StoreLogo.png", size: 50 },
   ].filter((i) => sourceSize >= i.size);
 
   return (

@@ -1,5 +1,5 @@
 import { Command } from "@tauri-apps/plugin-shell";
-import { mkdir, writeFile, copyFile, readFile } from "@tauri-apps/plugin-fs";
+import { mkdir, writeFile, copyFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 
 // ===== iOS =====
@@ -174,6 +174,17 @@ const TAURI_ICONS = [
   { filename: "128x128@2x.png", size: 256 },
   { filename: "icon.ico", size: 256 },
   { filename: "icon.png", size: 1024 },
+  // Windows Store tiles
+  { filename: "Square30x30Logo.png", size: 30 },
+  { filename: "Square44x44Logo.png", size: 44 },
+  { filename: "Square71x71Logo.png", size: 71 },
+  { filename: "Square89x89Logo.png", size: 89 },
+  { filename: "Square107x107Logo.png", size: 107 },
+  { filename: "Square142x142Logo.png", size: 142 },
+  { filename: "Square150x150Logo.png", size: 150 },
+  { filename: "Square284x284Logo.png", size: 284 },
+  { filename: "Square310x310Logo.png", size: 310 },
+  { filename: "StoreLogo.png", size: 50 },
 ];
 
 /**
