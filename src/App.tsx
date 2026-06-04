@@ -36,7 +36,7 @@ const App: React.FC = () => {
           activeKey={activeTab}
           onChange={(key) => setActiveTab(key as "video" | "audio")}
           items={[
-            { key: "video", label: "视频分割" },
+            { key: "video", label: "视频处理" },
             { key: "audio", label: "音频处理" },
             { key: "image", label: "图片处理", disabled: true },
           ]}

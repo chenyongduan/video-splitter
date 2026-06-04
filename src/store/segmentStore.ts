@@ -3,6 +3,8 @@ import type {
   Segment,
   VideoInfo,
   SplitProgress,
+  VideoFunctionTab,
+  VideoProcessResult,
   AudioInfo,
   AudioProcessResult,
   AppTab,
@@ -26,6 +28,11 @@ interface AppState {
   isSplitting: boolean;
   progress: SplitProgress | null;
   splitResult: string | null;
+
+  // Video processing state
+  videoFunctionTab: VideoFunctionTab;
+  isVideoProcessing: boolean;
+  videoProcessResult: VideoProcessResult | null;
 
   // Video element ref (not reactive, used imperatively)
   videoElement: HTMLVideoElement | null;
@@ -58,6 +65,11 @@ interface AppState {
   setProgress: (progress: SplitProgress | null) => void;
   setSplitResult: (result: string | null) => void;
 
+  // Video processing actions
+  setVideoFunctionTab: (tab: VideoFunctionTab) => void;
+  setVideoProcessing: (val: boolean) => void;
+  setVideoProcessResult: (result: VideoProcessResult | null) => void;
+
   // Audio actions
   setAudioFunctionTab: (tab: string) => void;
   setAudioFile: (path: string, fileName: string, info: AudioInfo) => void;
@@ -85,6 +97,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   progress: null,
   splitResult: null,
 
+  // Video processing
+  videoFunctionTab: "split",
+  isVideoProcessing: false,
+  videoProcessResult: null,
+
   // Video element
   videoElement: null,
   setVideoElement: (el) => set({ videoElement: el }),
@@ -108,6 +125,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       segments: [],
       progress: null,
       splitResult: null,
+      videoFunctionTab: "split",
+      isVideoProcessing: false,
+      videoProcessResult: null,
     }),
 
   clearVideo: () =>
@@ -119,6 +139,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       segments: [],
       progress: null,
       splitResult: null,
+      videoFunctionTab: "split",
+      isVideoProcessing: false,
+      videoProcessResult: null,
     }),
 
   // Segment actions
@@ -179,6 +202,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSplitting: (val) => set({ isSplitting: val }),
   setProgress: (progress) => set({ progress }),
   setSplitResult: (result) => set({ splitResult: result }),
+
+  // Video processing actions
+  setVideoFunctionTab: (tab) => set({ videoFunctionTab: tab }),
+  setVideoProcessing: (val) => set({ isVideoProcessing: val }),
+  setVideoProcessResult: (result) => set({ videoProcessResult: result }),
 
   // Audio actions
   setAudioFunctionTab: (tab) =>

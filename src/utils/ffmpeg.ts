@@ -1,6 +1,12 @@
 import { Command } from "@tauri-apps/plugin-shell";
 import { mkdir } from "@tauri-apps/plugin-fs";
-import type { Segment, VideoInfo, SplitProgress } from "../types";
+import type {
+  Segment,
+  VideoInfo,
+  SplitProgress,
+  VideoConvertParams,
+  VideoCompressParams,
+} from "../types";
 
 type ProgressCallback = (progress: SplitProgress) => void;
 
@@ -9,16 +15,38 @@ type ProgressCallback = (progress: SplitProgress) => void;
  * Uses the bundled FFmpeg sidecar binary.
  */
 export async function getVideoInfo(filePath: string): Promise<VideoInfo> {
-  const command = Command.sidecar("binaries/ffmpeg", ["-i", filePath]);
-  const output = await command.execute();
+  // Use ffprobe for accurate metadata
+  const probeCommand = Command.sidecar("binaries/ffprobe", [
+    "-v", "quiet",
+    "-print_format", "json",
+    "-show_format",
+    "-show_streams",
+    filePath,
+  ]);
+  const probeOutput = await probeCommand.execute();
+  const data = JSON.parse(probeOutput.stdout);
 
-  // ffmpeg exits with code 1 when no output file is specified — that's expected
-  const stderr = output.stderr;
+  // Determine format from file extension (MP4 and MOV share the same container)
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  const knownVideoFormats = ["mp4", "mov", "mkv", "avi", "webm"];
+  const formatName = knownVideoFormats.includes(ext) ? ext : (data.format?.format_name || "").split(",")[0]?.trim() || "";
 
-  const duration = parseDuration(stderr);
-  const { width, height, fps } = parseVideoStream(stderr);
+  const duration = parseFloat(data.format?.duration) || 0;
 
-  return { duration, width, height, fps };
+  const videoStream = (data.streams || []).find(
+    (s: Record<string, unknown>) => s.codec_type === "video",
+  );
+
+  const width: number = videoStream?.width || 0;
+  const height: number = videoStream?.height || 0;
+
+  let fps = 30;
+  if (videoStream?.r_frame_rate) {
+    const [num, den] = String(videoStream.r_frame_rate).split("/").map(Number);
+    if (den > 0) fps = num / den;
+  }
+
+  return { duration, width, height, fps, format: formatName };
 }
 
 /**
@@ -80,84 +108,122 @@ export async function splitVideo(
   return outputDir;
 }
 
+// ===== Video encoder mapping =====
+
+const VIDEO_ENCODERS: Record<string, string[]> = {
+  mp4: ["-c:v", "libx264", "-c:a", "aac"],
+  mov: ["-c:v", "libx264", "-c:a", "aac"],
+  mkv: ["-c:v", "libx264", "-c:a", "aac"],
+  avi: ["-c:v", "libx264", "-c:a", "mp3"],
+  webm: ["-c:v", "libvpx-vp9", "-c:a", "libvorbis"],
+};
+
 /**
- * Parse "Duration: HH:MM:SS.ms" from ffmpeg stderr output
+ * Convert video to a different format using FFmpeg re-encoding.
  */
-function parseDuration(stderr: string): number {
-  for (const line of stderr.split("\n")) {
-    const idx = line.indexOf("Duration:");
-    if (idx !== -1) {
-      const rest = line.slice(idx + "Duration:".length);
-      const timeStr = rest.split(",")[0].trim();
-      return parseHMS(timeStr);
-    }
+export async function convertVideo(
+  inputPath: string,
+  outputPath: string,
+  _params: VideoConvertParams,
+): Promise<void> {
+  const ext = outputPath.split(".").pop()?.toLowerCase() || "mp4";
+  const encoderArgs = VIDEO_ENCODERS[ext] || VIDEO_ENCODERS["mp4"];
+
+  const args = [
+    "-y",
+    "-i",
+    inputPath,
+    ...encoderArgs,
+    "-pix_fmt",
+    "yuv420p",
+    ...(ext === "mp4" || ext === "mov" ? ["-movflags", "+faststart"] : []),
+    outputPath,
+  ];
+
+  const command = Command.sidecar("binaries/ffmpeg", args);
+  const result = await command.execute();
+
+  if (result.code !== 0) {
+    throw new Error(`视频转换失败: ${result.stderr}`);
   }
-  throw new Error("Failed to parse video duration from ffmpeg output");
 }
 
 /**
- * Parse resolution and fps from the video stream line in ffmpeg stderr
+ * Compress video using CRF quality control with optional resolution scaling.
  */
-function parseVideoStream(stderr: string): {
-  width: number;
-  height: number;
-  fps: number;
-} {
-  for (const line of stderr.split("\n")) {
-    if (!line.includes("Video:")) continue;
+export async function compressVideo(
+  inputPath: string,
+  outputPath: string,
+  params: VideoCompressParams,
+): Promise<void> {
+  const ext = outputPath.split(".").pop()?.toLowerCase() || "mp4";
+  const encoderArgs = VIDEO_ENCODERS[ext] || VIDEO_ENCODERS["mp4"];
 
-    let width = 0;
-    let height = 0;
-    let fps = 30;
+  const args = ["-y", "-i", inputPath];
 
-    // Find resolution pattern (e.g., "1920x1080")
-    for (const part of line.split(/[\s,]/)) {
-      const xPos = part.indexOf("x");
-      if (xPos !== -1) {
-        const w = parseInt(part.slice(0, xPos), 10);
-        const h = parseInt(part.slice(xPos + 1), 10);
-        if (w > 0 && h > 0) {
-          width = w;
-          height = h;
-        }
-      }
-    }
+  // CRF quality (lower = better, range 0-51)
+  args.push("-crf", String(params.crf));
 
-    // Parse fps from "30 fps" or "29.97 fps" or "24000/1001 fps"
-    const fpsIdx = line.indexOf("fps");
-    if (fpsIdx !== -1) {
-      const before = line.slice(0, fpsIdx);
-      const tokens = before.split(/[\s,]/).filter((t) => t.length > 0);
-      const last = tokens[tokens.length - 1];
-      if (last?.includes("/")) {
-        const [num, den] = last.split("/").map(Number);
-        if (den > 0) fps = num / den;
-      } else if (last) {
-        const v = parseFloat(last);
-        if (!isNaN(v)) fps = v;
-      }
-    }
+  // Encoding speed preset
+  if (params.preset) {
+    args.push("-preset", params.preset);
+  }
 
-    if (width > 0 && height > 0) {
-      return { width, height, fps };
+  // Resolution scaling via video filter
+  if (params.resolution && params.resolution !== "original") {
+    const [w, h] = params.resolution.split("x").map(Number);
+    if (w > 0 && h > 0) {
+      args.push("-vf", `scale=${w}:${h}`);
     }
   }
-  throw new Error("Failed to parse video stream info from ffmpeg output");
+
+  args.push(
+    ...encoderArgs,
+    "-pix_fmt",
+    "yuv420p",
+    ...(ext === "mp4" || ext === "mov" ? ["-movflags", "+faststart"] : []),
+    outputPath,
+  );
+
+  const command = Command.sidecar("binaries/ffmpeg", args);
+  const result = await command.execute();
+
+  if (result.code !== 0) {
+    throw new Error(`视频压缩失败: ${result.stderr}`);
+  }
 }
 
 /**
- * Parse "HH:MM:SS.ms" to seconds
+ * Get video file metadata using ffprobe.
+ * Returns file size, format, width, and height.
  */
-function parseHMS(timeStr: string): number {
-  const parts = timeStr.trim().split(":");
-  if (parts.length >= 3) {
-    const h = parseFloat(parts[0]);
-    const m = parseFloat(parts[1]);
-    const s = parseFloat(parts[2]);
-    if (isNaN(h) || isNaN(m) || isNaN(s)) {
-      throw new Error(`Invalid time format: ${timeStr}`);
-    }
-    return h * 3600 + m * 60 + s;
-  }
-  throw new Error(`Invalid time format: ${timeStr}`);
+export async function getVideoFileInfo(
+  filePath: string,
+): Promise<{ fileSize: number; format: string; width: number; height: number }> {
+  const command = Command.sidecar("binaries/ffprobe", [
+    "-v",
+    "quiet",
+    "-print_format",
+    "json",
+    "-show_format",
+    "-show_streams",
+    filePath,
+  ]);
+
+  const output = await command.execute();
+  const data = JSON.parse(output.stdout);
+
+  const format = (data.format?.format_name || "").split(",").pop()?.trim() || "";
+  const fileSize = Number(data.format?.size) || 0;
+
+  const videoStream = (data.streams || []).find(
+    (s: Record<string, unknown>) => s.codec_type === "video",
+  );
+
+  return {
+    fileSize,
+    format,
+    width: videoStream?.width || 0,
+    height: videoStream?.height || 0,
+  };
 }

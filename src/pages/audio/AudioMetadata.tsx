@@ -22,14 +22,11 @@ const AudioMetadata: React.FC = () => {
       style={{
         background: "#fff",
         borderRadius: 8,
-        padding: 16,
+        padding: "8px 16px",
         marginBottom: 12,
         border: "1px solid #e8e8e8",
       }}
     >
-      <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>
-        📋 音频信息
-      </div>
       <div
         style={{
           display: "grid",
@@ -39,7 +36,7 @@ const AudioMetadata: React.FC = () => {
       >
         {items.map((item) => (
           <div key={item.label} style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 12, color: "#999" }}>{item.label}</div>
+            <div style={{ fontSize: 12, color: "#999", marginBottom: 2 }}>{item.label}</div>
             <div style={{ fontSize: 14, fontWeight: 500 }}>
               {item.value}
             </div>

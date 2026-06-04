@@ -28,7 +28,6 @@ const AudioDropZone: React.FC = () => {
       try {
         const info = await getAudioInfo(filePath);
         setAudioFile(filePath, fileName, info);
-        message.success(`已加载: ${fileName}`);
       } catch (err) {
         message.error(`加载失败: ${err}，文件可能已损坏`);
       }

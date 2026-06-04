@@ -3,6 +3,7 @@ export interface VideoInfo {
   width: number;
   height: number;
   fps: number;
+  format: string;
 }
 
 export interface Segment {
@@ -16,6 +17,35 @@ export interface SplitProgress {
   current: number;
   total: number;
   percent: number;
+}
+
+// ===== Video Processing =====
+
+export type VideoFunctionTab = "convert" | "compress" | "split";
+
+export type VideoTaskType = "convert" | "compress" | "split";
+
+export interface VideoConvertParams {
+  outputFormat: string;
+}
+
+export interface VideoCompressParams {
+  crf: number;
+  resolution?: string;
+  preset?: string;
+}
+
+export interface VideoProcessResult {
+  inputPath: string;
+  outputPath: string;
+  inputFormat: string;
+  outputFormat: string;
+  inputSize: number;
+  outputSize: number;
+  inputResolution: string;
+  outputResolution: string;
+  duration: number;
+  taskType: VideoTaskType;
 }
 
 // ===== Global =====

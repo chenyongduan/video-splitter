@@ -1,9 +1,11 @@
-import React from "react";
-import { Button, Space, Typography, Tag, Alert, Spin } from "antd";
-import { DeleteOutlined, FolderOutlined } from "@ant-design/icons";
+import React, { useCallback } from "react";
+import { Button, Space, Typography, Alert, Spin, message } from "antd";
+import { DeleteOutlined, FolderOutlined, FolderOpenOutlined } from "@ant-design/icons";
+import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useAppStore } from "../../store/segmentStore";
 import { formatTime } from "../../utils/format";
+import { getAudioInfo } from "../../utils/audio";
 import AudioDropZone from "./AudioDropZone";
 import AudioMetadata from "./AudioMetadata";
 import AudioWaveform from "./AudioWaveform";
@@ -12,6 +14,8 @@ import AudioCompressor from "./AudioCompressor";
 import AudioTrimmer from "./AudioTrimmer";
 
 const { Text } = Typography;
+
+const SUPPORTED_EXTENSIONS = ["mp3", "wav", "aac", "m4a", "flac", "ogg"];
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
@@ -22,12 +26,34 @@ function formatFileSize(bytes: number): string {
 const AudioPage: React.FC = () => {
   const isAudioLoaded = useAppStore((s) => s.isAudioLoaded);
   const audioFileName = useAppStore((s) => s.audioFileName);
-  const audioInfo = useAppStore((s) => s.audioInfo);
   const audioFunctionTab = useAppStore((s) => s.audioFunctionTab);
   const setAudioFunctionTab = useAppStore((s) => s.setAudioFunctionTab);
   const audioProcessResult = useAppStore((s) => s.audioProcessResult);
   const isAudioProcessing = useAppStore((s) => s.isAudioProcessing);
   const clearAudio = useAppStore((s) => s.clearAudio);
+  const setAudioFile = useAppStore((s) => s.setAudioFile);
+
+  const handleLoadAudio = useCallback(async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [
+          {
+            name: "音频文件",
+            extensions: SUPPORTED_EXTENSIONS,
+          },
+        ],
+      });
+      if (!selected) return;
+
+      const filePath = selected as string;
+      const fileName = filePath.split(/[/\\]/).pop() || "audio.mp3";
+      const info = await getAudioInfo(filePath);
+      setAudioFile(filePath, fileName, info);
+    } catch (err) {
+      message.error(`加载失败: ${err}`);
+    }
+  }, [setAudioFile]);
 
   if (!isAudioLoaded) {
     return (
@@ -78,16 +104,13 @@ const AudioPage: React.FC = () => {
           <Text strong ellipsis style={{ maxWidth: 400 }}>
             {audioFileName}
           </Text>
-          {audioInfo && (
-            <>
-              <Tag color="blue">{audioInfo.format.toUpperCase()}</Tag>
-              <Tag color="green">{formatTime(audioInfo.duration)}</Tag>
-            </>
-          )}
         </div>
         <Space>
-          <Button icon={<DeleteOutlined />} onClick={clearAudio}>
-            重新选择
+          <Button icon={<FolderOpenOutlined />} onClick={handleLoadAudio}>
+            选择音频
+          </Button>
+          <Button danger icon={<DeleteOutlined />} onClick={clearAudio}>
+            清除
           </Button>
         </Space>
       </div>

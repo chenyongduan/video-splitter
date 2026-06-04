@@ -11,7 +11,13 @@ import { formatTime } from "../../utils/format";
 
 const VideoPlayer: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { videoPath, videoInfo, addSegment, setVideoElement } = useAppStore();
+  const {
+    videoPath,
+    videoInfo,
+    addSegment,
+    setVideoElement,
+    videoFunctionTab,
+  } = useAppStore();
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -117,7 +123,7 @@ const VideoPlayer: React.FC = () => {
   const videoSrc = convertFileSrc(videoPath);
 
   return (
-    <div style={{ marginBottom: 8 }}>
+    <div>
       {/* Video */}
       <div
         style={{
@@ -141,10 +147,13 @@ const VideoPlayer: React.FC = () => {
 
       {/* Progress bar */}
       <div
-        style={{ padding: "8px 0", position: "relative" }}
+        style={{ paddingTop: "8px", position: "relative" }}
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
-          const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          const ratio = Math.max(
+            0,
+            Math.min(1, (e.clientX - rect.left) / rect.width),
+          );
           setHoverTime(ratio * (videoInfo?.duration || 0));
           setHoverX(e.clientX - rect.left);
         }}
@@ -159,11 +168,7 @@ const VideoPlayer: React.FC = () => {
           tooltip={{ open: false }}
         />
         {hoverTime !== null && (
-          <Tooltip
-            open={true}
-            title={formatTime(hoverTime)}
-            placement="top"
-          >
+          <Tooltip open={true} title={formatTime(hoverTime)} placement="top">
             <div
               style={{
                 position: "absolute",
@@ -194,9 +199,7 @@ const VideoPlayer: React.FC = () => {
 
         {/* Pending start indicator */}
         {pendingStart !== null && (
-          <Tag color="blue">
-            起始点: {formatTime(pendingStart)}
-          </Tag>
+          <Tag color="blue">起始点: {formatTime(pendingStart)}</Tag>
         )}
 
         <Space wrap>
@@ -207,35 +210,23 @@ const VideoPlayer: React.FC = () => {
           >
             {isPlaying ? "暂停" : "播放"}
           </Button>
-          <Button onClick={() => seekTo(Math.max(0, currentTime - 5))}>
-            后退5s
-          </Button>
-          <Button
-            onClick={() =>
-              seekTo(Math.min(videoInfo?.duration || 0, currentTime + 5))
-            }
-          >
-            前进5s
-          </Button>
-          <Button
-            type={pendingStart === null ? "default" : "default"}
-            icon={<ScissorOutlined />}
-            onClick={handleSetStart}
-          >
-            设为开始
-          </Button>
-          <Button
-            type={pendingStart !== null ? "primary" : "default"}
-            icon={<ScissorOutlined />}
-            onClick={handleSetEnd}
-            disabled={pendingStart !== null && currentTime <= pendingStart}
-          >
-            设为结束
-          </Button>
-          {pendingStart !== null && (
-            <Button onClick={() => setPendingStart(null)}>
-              取消
-            </Button>
+          {videoFunctionTab === "split" && (
+            <>
+              <Button icon={<ScissorOutlined />} onClick={handleSetStart}>
+                设为开始
+              </Button>
+              <Button
+                type={pendingStart !== null ? "primary" : "default"}
+                icon={<ScissorOutlined />}
+                onClick={handleSetEnd}
+                disabled={pendingStart !== null && currentTime <= pendingStart}
+              >
+                设为结束
+              </Button>
+              {pendingStart !== null && (
+                <Button onClick={() => setPendingStart(null)}>取消</Button>
+              )}
+            </>
           )}
         </Space>
       </div>

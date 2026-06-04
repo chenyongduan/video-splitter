@@ -4,48 +4,49 @@ import {
   Space,
   Typography,
   Card,
-  message,
   Tag,
   Alert,
-  Popconfirm,
+  Spin,
+  message,
 } from "antd";
 import {
-  PlusOutlined,
-  ScissorOutlined,
   FolderOpenOutlined,
   InboxOutlined,
   DeleteOutlined,
+  FolderOutlined,
 } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
-import { getVideoInfo, splitVideo } from "../../utils/ffmpeg";
-import VideoPlayer from "./VideoPlayer";
-import SegmentTable from "./SegmentTable";
-import ProgressDialog from "./ProgressDialog";
-import { useAppStore } from "../../store/segmentStore";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { getVideoInfo } from "../../utils/ffmpeg";
 import { formatTime } from "../../utils/format";
+import VideoPlayer from "./VideoPlayer";
+import VideoConverter from "./VideoConverter";
+import VideoCompressor from "./VideoCompressor";
+import VideoSplitter from "./VideoSplitter";
+import { useAppStore } from "../../store/segmentStore";
 
 const { Text } = Typography;
 
 const SUPPORTED_EXTENSIONS = ["mp4", "mov", "mkv", "avi", "webm"];
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 const VideoPage: React.FC = () => {
   const {
-    videoPath,
     videoInfo,
     videoFileName,
     isVideoLoaded,
-    segments,
-    isSplitting,
-    progress,
-    splitResult,
     setVideo,
     clearVideo,
-    addSegment,
-    removeSegment,
-    setSplitting,
-    setProgress,
-    setSplitResult,
+    videoFunctionTab,
+    setVideoFunctionTab,
+    isVideoProcessing,
+    videoProcessResult,
   } = useAppStore();
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -66,7 +67,6 @@ const VideoPage: React.FC = () => {
       try {
         const info = await getVideoInfo(filePath);
         setVideo(filePath, fileName, info);
-        message.success(`已加载: ${fileName}`);
       } catch (err) {
         message.error(`加载失败: ${err}`);
       }
@@ -114,78 +114,17 @@ const VideoPage: React.FC = () => {
     };
   }, [loadVideoFile]);
 
-  const handleAddSegment = useCallback(() => {
-    if (!videoInfo) return;
-    const duration = videoInfo.duration;
-
-    const lastEnd =
-      segments.length > 0 ? segments[segments.length - 1].end : 0;
-    const start = lastEnd;
-    const end = Math.min(start + 30, duration);
-
-    if (start >= duration) {
-      message.warning("已到达视频末尾");
-      return;
-    }
-
-    addSegment(start, end);
-  }, [videoInfo, segments, addSegment]);
-
-  const handleSplit = useCallback(async () => {
-    if (segments.length === 0) {
-      message.warning("请先添加分割区间");
-      return;
-    }
-
-    for (const seg of segments) {
-      if (seg.start >= seg.end) {
-        message.error(
-          `区间 ${formatTime(seg.start)} - ${formatTime(seg.end)} 无效：开始时间必须小于结束时间`,
-        );
-        return;
-      }
-      if (videoInfo && seg.end > videoInfo.duration) {
-        message.error(
-          `区间 ${formatTime(seg.start)} - ${formatTime(seg.end)} 超出视频时长`,
-        );
-        return;
-      }
-    }
-
-    setSplitting(true);
-    setProgress(null);
-    setSplitResult(null);
-
-    try {
-      const result = await splitVideo(videoPath, segments, (p) => {
-        setProgress(p);
-      });
-      setSplitResult(result);
-      message.success("切割完成！");
-    } catch (err) {
-      message.error(`切割失败: ${err}`);
-    } finally {
-      setSplitting(false);
-    }
-  }, [
-    segments,
-    videoPath,
-    videoInfo,
-    setSplitting,
-    setProgress,
-    setSplitResult,
-  ]);
-
-  return (
-    <div
-      style={{
-        padding: 16,
-        maxWidth: 960,
-        margin: "0 auto",
-        width: "100%",
-      }}
-    >
-      {!isVideoLoaded ? (
+  // ===== Drop zone (no file loaded) =====
+  if (!isVideoLoaded) {
+    return (
+      <div
+        style={{
+          padding: 16,
+          maxWidth: 960,
+          margin: "0 auto",
+          width: "100%",
+        }}
+      >
         <Card style={{ marginTop: 48 }}>
           <div
             ref={dropRef}
@@ -214,134 +153,149 @@ const VideoPage: React.FC = () => {
             </p>
           </div>
         </Card>
-      ) : (
-        <>
-          {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 12,
-            }}
-          >
-            <div
-              style={{ display: "flex", alignItems: "center", gap: 8 }}
-            >
-              <Text strong ellipsis style={{ maxWidth: 400 }}>
-                {videoFileName}
-              </Text>
-              {videoInfo && (
-                <>
-                  <Tag color="blue">
-                    {videoInfo.width}×{videoInfo.height}
-                  </Tag>
-                  <Tag color="green">
-                    {formatTime(videoInfo.duration)}
-                  </Tag>
-                </>
-              )}
-            </div>
-            <Space>
-              <Button
-                icon={<FolderOpenOutlined />}
-                onClick={handleLoadVideo}
-              >
-                选择视频
-              </Button>
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                onClick={clearVideo}
-              >
-                清除
-              </Button>
-            </Space>
-          </div>
+      </div>
+    );
+  }
 
-          {/* Video Player */}
-          <Card size="small" style={{ marginBottom: 12 }}>
-            <VideoPlayer />
-          </Card>
+  // ===== Main layout (file loaded) =====
 
-          {/* Segment Section */}
-          <Card
-            size="small"
-            title="分割区间"
-            extra={
-              <Space size={4}>
-                <Button
-                  size="small"
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddSegment}
-                >
-                  添加区间
-                </Button>
-                <Popconfirm
-                  title="确定清空所有分割区间？"
-                  onConfirm={() =>
-                    useAppStore.getState().clearSegments()
-                  }
-                  okText="确定"
-                  cancelText="取消"
-                >
-                  <Button
-                    size="small"
-                    danger
-                    disabled={segments.length === 0}
-                  >
-                    清空
-                  </Button>
-                </Popconfirm>
-              </Space>
-            }
-          >
-            <SegmentTable
-              segments={segments}
-              onRemove={removeSegment}
-            />
-          </Card>
+  const handleOpenDir = async () => {
+    if (videoProcessResult?.outputPath) {
+      await revealItemInDir(videoProcessResult.outputPath);
+    }
+  };
 
-          {/* Split button */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginTop: 16,
-            }}
-          >
-            <Button
-              type="primary"
-              size="large"
-              icon={<ScissorOutlined />}
-              onClick={handleSplit}
-              loading={isSplitting}
-              disabled={segments.length === 0}
-            >
-              开始切割 ({segments.length} 段)
-            </Button>
-          </div>
+  const tabLabels = {
+    convert: "格式转换",
+    compress: "视频压缩",
+    split: "视频分割",
+  } as const;
 
-          {/* Result */}
-          {splitResult && (
-            <Alert
-              style={{ marginTop: 12 }}
-              message="切割完成"
-              description={`输出目录: ${splitResult}`}
-              type="success"
-              showIcon
-            />
+  return (
+    <div
+      style={{
+        padding: 16,
+        maxWidth: 960,
+        margin: "0 auto",
+        width: "100%",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Text strong ellipsis style={{ maxWidth: 400 }}>
+            {videoFileName}
+          </Text>
+          {videoInfo && (
+            <Tag color="blue">
+              {videoInfo.format.toUpperCase()}
+            </Tag>
           )}
-        </>
-      )}
+          {videoInfo && (
+            <>
+              <Tag color="blue">
+                {videoInfo.width}×{videoInfo.height}
+              </Tag>
+              <Tag color="green">
+                {formatTime(videoInfo.duration)}
+              </Tag>
+            </>
+          )}
+        </div>
+        <Space>
+          <Button icon={<FolderOpenOutlined />} onClick={handleLoadVideo}>
+            选择视频
+          </Button>
+          <Button danger icon={<DeleteOutlined />} onClick={clearVideo}>
+            清除
+          </Button>
+        </Space>
+      </div>
 
-      <ProgressDialog
-        open={isSplitting}
-        current={progress?.current || 0}
-        total={progress?.total || 0}
-        percent={progress?.percent || 0}
-      />
+      {/* Video Player */}
+      <Card size="small" style={{ marginBottom: 12 }}>
+        <VideoPlayer />
+      </Card>
+
+      {/* Function Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        {(["convert", "compress", "split"] as const).map((tab) => {
+          const active = videoFunctionTab === tab;
+          return (
+            <div
+              key={tab}
+              onClick={() => setVideoFunctionTab(tab)}
+              style={{
+                padding: "8px 20px",
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: active ? 500 : 400,
+                cursor: "pointer",
+                background: active ? "#1677ff" : "#fff",
+                color: active ? "#fff" : "#333",
+                border: `1px solid ${active ? "#1677ff" : "#d9d9d9"}`,
+                transition: "all 0.2s",
+              }}
+            >
+              {tabLabels[tab]}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Function Panel */}
+      <Spin spinning={isVideoProcessing} tip="处理中...">
+        {videoFunctionTab === "convert" && <VideoConverter />}
+        {videoFunctionTab === "compress" && <VideoCompressor />}
+        {videoFunctionTab === "split" && <VideoSplitter />}
+      </Spin>
+
+      {/* Result (for convert/compress) */}
+      {videoProcessResult && (
+        <Alert
+          style={{ marginTop: 12 }}
+          type="success"
+          showIcon
+          message="处理完成"
+          description={
+            <div style={{ fontSize: 13 }}>
+              <div>
+                文件名：
+                {videoProcessResult.inputPath.split(/[/\\]/).pop()} →{" "}
+                {videoProcessResult.outputPath.split(/[/\\]/).pop()}
+              </div>
+              <div>
+                格式：{videoProcessResult.inputFormat.toUpperCase()} →{" "}
+                {videoProcessResult.outputFormat.toUpperCase()}
+              </div>
+              <div>
+                文件大小：{formatFileSize(videoProcessResult.inputSize)} →{" "}
+                {formatFileSize(videoProcessResult.outputSize)}
+              </div>
+              <div>
+                分辨率：{videoProcessResult.inputResolution} →{" "}
+                {videoProcessResult.outputResolution}
+              </div>
+              <div>时长：{formatTime(videoProcessResult.duration)}</div>
+              <Button
+                size="small"
+                icon={<FolderOutlined />}
+                style={{ marginTop: 8 }}
+                onClick={handleOpenDir}
+              >
+                打开文件所在目录
+              </Button>
+            </div>
+          }
+        />
+      )}
     </div>
   );
 };

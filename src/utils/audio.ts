@@ -56,16 +56,37 @@ export async function getAudioInfo(filePath: string): Promise<AudioInfo> {
   const channels = (audioStream.channels as number) || 2;
   const fileSize = parseInt(format.size as string, 10) || 0;
 
-  // 从文件扩展名推断格式
-  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  // 从 ffprobe 数据获取真实格式
+  // 优先用 codec_name（如 mp3, aac, flac, vorbis, pcm_s16le）
+  const codecName = (audioStream.codec_name as string) || "";
+  const formatName = (format.format_name as string) || "";
 
-  // format_name 可能是复合值如 "mov,mp4,m4a,aac"
-  let audioFormat = ext;
-  if (!audioFormat) {
-    const formatName = (format.format_name as string) || "";
+  let audioFormat = "";
+  // 编解码器名直接匹配已知格式
+  const codecToFormat: Record<string, string> = {
+    mp3: "mp3",
+    mp3float: "mp3",
+    aac: "aac",
+    flac: "flac",
+    vorbis: "ogg",
+    pcm_s16le: "wav",
+    pcm_s24le: "wav",
+    pcm_f32le: "wav",
+    alac: "m4a",
+    opus: "ogg",
+  };
+
+  if (codecToFormat[codecName]) {
+    audioFormat = codecToFormat[codecName];
+  } else if (formatName) {
+    // format_name 可能是复合值如 "mov,mp4,m4a,aac"
     const knownFormats = ["mp3", "wav", "aac", "m4a", "flac", "ogg"];
     const matched = knownFormats.find((f) => formatName.includes(f));
     audioFormat = matched || formatName.split(",")[0];
+  }
+
+  if (!audioFormat) {
+    audioFormat = filePath.split(".").pop()?.toLowerCase() || "unknown";
   }
 
   return {

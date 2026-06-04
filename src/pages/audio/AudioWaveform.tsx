@@ -20,6 +20,7 @@ const AudioWaveform: React.FC = () => {
   const regionsRef = useRef<RegionsPlugin | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState<number>(0);
   const [regionStart, setRegionStart] = useState<number>(0);
   const [regionEnd, setRegionEnd] = useState<number>(0);
 
@@ -66,6 +67,7 @@ const AudioWaveform: React.FC = () => {
     ws.on("play", () => setIsPlaying(true));
     ws.on("pause", () => setIsPlaying(false));
     ws.on("finish", () => setIsPlaying(false));
+    ws.on("timeupdate", (time) => setCurrentTime(time));
 
     const src = convertFileSrc(audioPath);
     ws.load(src);
@@ -123,37 +125,6 @@ const AudioWaveform: React.FC = () => {
       }}
     >
       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 8,
-        }}
-      >
-        <span style={{ fontWeight: 600, fontSize: 14 }}>🔊 波形预览</span>
-        <Space size={8}>
-          <Button
-            size="small"
-            icon={
-              isPlaying ? (
-                <PauseCircleOutlined />
-              ) : (
-                <PlayCircleOutlined />
-              )
-            }
-            onClick={togglePlay}
-          >
-            {isPlaying ? "暂停" : "播放"}
-          </Button>
-          {audioFunctionTab === "trim" && (
-            <Button size="small" type="primary" onClick={handlePlayRegion}>
-              播放选中
-            </Button>
-          )}
-        </Space>
-      </div>
-
-      <div
         ref={containerRef}
         style={{
           background: "#f0f5ff",
@@ -171,13 +142,42 @@ const AudioWaveform: React.FC = () => {
           color: "#999",
         }}
       >
-        <span>00:00</span>
+        <span>{formatTime(currentTime)}</span>
         {audioFunctionTab === "trim" && (
           <span style={{ color: "#1677ff" }}>
             选中：{formatTime(regionStart)} — {formatTime(regionEnd)}
           </span>
         )}
         <span>{formatTime(audioInfo.duration)}</span>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginTop: 8,
+        }}
+      >
+        <Space size={8}>
+          <Button
+            type="primary"
+            icon={
+              isPlaying ? (
+                <PauseCircleOutlined />
+              ) : (
+                <PlayCircleOutlined />
+              )
+            }
+            onClick={togglePlay}
+          >
+            {isPlaying ? "暂停" : "播放"}
+          </Button>
+          {audioFunctionTab === "trim" && (
+            <Button type="primary" onClick={handlePlayRegion}>
+              播放选中
+            </Button>
+          )}
+        </Space>
       </div>
     </div>
   );
