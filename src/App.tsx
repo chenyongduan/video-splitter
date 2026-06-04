@@ -30,7 +30,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout style={{ height: "100vh", overflow: "hidden", background: "#f5f5f5", userSelect: "none", WebkitUserSelect: "none" }}>
+    <Layout style={{ height: "100vh", overflow: "hidden", background: "#f5f5f5", ...(import.meta.env.PROD ? { userSelect: "none", WebkitUserSelect: "none" } : {}) }}>
       <Header
         style={{
           background: "#fff",
