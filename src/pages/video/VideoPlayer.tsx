@@ -6,8 +6,8 @@ import {
   ScissorOutlined,
 } from "@ant-design/icons";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useAppStore } from "../store/segmentStore";
-import { formatTime } from "../utils/format";
+import { useAppStore } from "../../store/segmentStore";
+import { formatTime } from "../../utils/format";
 
 const VideoPlayer: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);

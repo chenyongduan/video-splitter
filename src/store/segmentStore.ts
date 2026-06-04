@@ -1,7 +1,18 @@
 import { create } from "zustand";
-import type { Segment, VideoInfo, SplitProgress } from "../types";
+import type {
+  Segment,
+  VideoInfo,
+  SplitProgress,
+  AudioInfo,
+  AudioProcessResult,
+  AppTab,
+} from "../types";
 
 interface AppState {
+  // Global tab state
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
+
   // Video state
   videoPath: string;
   videoInfo: VideoInfo | null;
@@ -20,6 +31,15 @@ interface AppState {
   videoElement: HTMLVideoElement | null;
   setVideoElement: (el: HTMLVideoElement | null) => void;
 
+  // Audio state
+  audioPath: string;
+  audioFileName: string;
+  audioInfo: AudioInfo | null;
+  isAudioLoaded: boolean;
+  audioFunctionTab: "convert" | "compress" | "trim";
+  audioProcessResult: AudioProcessResult | null;
+  isAudioProcessing: boolean;
+
   // Video actions
   setVideo: (path: string, fileName: string, info: VideoInfo) => void;
   clearVideo: () => void;
@@ -37,9 +57,20 @@ interface AppState {
   setSplitting: (val: boolean) => void;
   setProgress: (progress: SplitProgress | null) => void;
   setSplitResult: (result: string | null) => void;
+
+  // Audio actions
+  setAudioFunctionTab: (tab: string) => void;
+  setAudioFile: (path: string, fileName: string, info: AudioInfo) => void;
+  clearAudio: () => void;
+  setAudioProcessing: (val: boolean) => void;
+  setAudioProcessResult: (result: AudioProcessResult | null) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  // Global
+  activeTab: "video",
+  setActiveTab: (tab) => set({ activeTab: tab }),
+
   // Video
   videoPath: "",
   videoInfo: null,
@@ -57,6 +88,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Video element
   videoElement: null,
   setVideoElement: (el) => set({ videoElement: el }),
+
+  // Audio
+  audioPath: "",
+  audioFileName: "",
+  audioInfo: null,
+  isAudioLoaded: false,
+  audioFunctionTab: "convert",
+  audioProcessResult: null,
+  isAudioProcessing: false,
 
   // Video actions
   setVideo: (path, fileName, info) =>
@@ -111,7 +151,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!video) return;
 
     // Remove any previous preview listener
-    const prevHandler = (video as HTMLVideoElement & { _previewHandler?: () => void })._previewHandler;
+    const prevHandler = (video as HTMLVideoElement & { _previewHandler?: () => void })
+      ._previewHandler;
     if (prevHandler) {
       video.removeEventListener("timeupdate", prevHandler);
     }
@@ -120,11 +161,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (video.currentTime >= end) {
         video.pause();
         video.removeEventListener("timeupdate", handler);
-        (video as HTMLVideoElement & { _previewHandler?: () => void })._previewHandler = undefined;
+        (
+          video as HTMLVideoElement & { _previewHandler?: () => void }
+        )._previewHandler = undefined;
       }
     };
 
-    (video as HTMLVideoElement & { _previewHandler?: () => void })._previewHandler = handler;
+    (video as HTMLVideoElement & { _previewHandler?: () => void })._previewHandler =
+      handler;
     video.addEventListener("timeupdate", handler);
 
     video.currentTime = start;
@@ -135,4 +179,31 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSplitting: (val) => set({ isSplitting: val }),
   setProgress: (progress) => set({ progress }),
   setSplitResult: (result) => set({ splitResult: result }),
+
+  // Audio actions
+  setAudioFunctionTab: (tab) =>
+    set({ audioFunctionTab: tab as "convert" | "compress" | "trim" }),
+
+  setAudioFile: (path, fileName, info) =>
+    set({
+      audioPath: path,
+      audioFileName: fileName,
+      audioInfo: info,
+      isAudioLoaded: true,
+      audioProcessResult: null,
+    }),
+
+  clearAudio: () =>
+    set({
+      audioPath: "",
+      audioFileName: "",
+      audioInfo: null,
+      isAudioLoaded: false,
+      audioFunctionTab: "convert",
+      audioProcessResult: null,
+      isAudioProcessing: false,
+    }),
+
+  setAudioProcessing: (val) => set({ isAudioProcessing: val }),
+  setAudioProcessResult: (result) => set({ audioProcessResult: result }),
 }));

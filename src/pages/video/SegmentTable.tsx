@@ -1,9 +1,9 @@
 import React from "react";
 import { Table, Button, Popconfirm, Typography } from "antd";
 import { DeleteOutlined, PlayCircleOutlined } from "@ant-design/icons";
-import type { Segment } from "../types";
-import { formatTime } from "../utils/format";
-import { useAppStore } from "../store/segmentStore";
+import type { Segment } from "../../types";
+import { formatTime } from "../../utils/format";
+import { useAppStore } from "../../store/segmentStore";
 
 interface SegmentTableProps {
   segments: Segment[];

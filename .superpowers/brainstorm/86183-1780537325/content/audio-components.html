@@ -1,0 +1,171 @@
+<h2>音频处理页面组件布局</h2>
+<p class="subtitle">从上到下的工作流：选文件 → 看信息 → 选功能 → 配参数 → 处理</p>
+
+<div class="section">
+  <!-- State 1: 未加载文件 -->
+  <div class="mockup">
+    <div class="mockup-header">状态一：未加载文件 — AudioDropZone</div>
+    <div class="mockup-body" style="background:#fafafa;">
+      <div style="border:2px dashed #d9d9d9;border-radius:12px;padding:60px 40px;text-align:center;background:#fff;">
+        <div style="font-size:48px;margin-bottom:12px;">🎵</div>
+        <div style="font-size:18px;color:#333;margin-bottom:4px;">拖拽音频文件到此处，或点击选择文件</div>
+        <div style="font-size:13px;color:#999;">支持 MP3、WAV、AAC、M4A、FLAC、OGG</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <!-- State 2: 已加载文件 -->
+  <div class="mockup">
+    <div class="mockup-header">状态二：已加载文件 — 完整工作区</div>
+    <div class="mockup-body" style="background:#f5f5f5;padding:16px;">
+
+      <!-- 顶部文件信息栏 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:600;font-size:15px;">📄 example.mp3</span>
+          <span style="background:#e6f4ff;color:#1677ff;padding:2px 8px;border-radius:4px;font-size:12px;">MP3</span>
+          <span style="color:#999;font-size:13px;">3:25</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button style="background:#fff;border:1px solid #d9d9d9;border-radius:6px;padding:4px 16px;font-size:13px;cursor:pointer;">重新选择</button>
+        </div>
+      </div>
+
+      <!-- AudioMetadata 信息卡片 -->
+      <div style="background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;border:1px solid #e8e8e8;">
+        <div style="font-weight:600;margin-bottom:10px;font-size:14px;">📋 音频信息</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;">
+          <div style="text-align:center;">
+            <div style="font-size:12px;color:#999;">时长</div>
+            <div style="font-size:14px;font-weight:500;">03:25</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:12px;color:#999;">格式</div>
+            <div style="font-size:14px;font-weight:500;">MP3</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:12px;color:#999;">比特率</div>
+            <div style="font-size:14px;font-weight:500;">128kbps</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:12px;color:#999;">采样率</div>
+            <div style="font-size:14px;font-weight:500;">44100Hz</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:12px;color:#999;">声道</div>
+            <div style="font-size:14px;font-weight:500;">双声道</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AudioWaveform 波形区 -->
+      <div style="background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;border:1px solid #e8e8e8;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-weight:600;font-size:14px;">🔊 波形预览</span>
+          <div style="display:flex;gap:8px;">
+            <button style="background:#1677ff;color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:12px;">▶ 播放</button>
+            <button style="background:#fff;border:1px solid #d9d9d9;border-radius:4px;padding:4px 12px;font-size:12px;">⏹ 停止</button>
+          </div>
+        </div>
+        <!-- 波形模拟 -->
+        <div style="background:#f0f5ff;border-radius:6px;height:80px;position:relative;overflow:hidden;display:flex;align-items:center;padding:0 8px;">
+          <svg width="100%" height="60" viewBox="0 0 600 60" preserveAspectRatio="none">
+            <rect x="0" y="0" width="600" height="60" fill="#f0f5ff"/>
+            <!-- 模拟波形柱 -->
+            <rect x="5" y="20" width="3" height="20" fill="#91caff" rx="1"/>
+            <rect x="12" y="12" width="3" height="36" fill="#91caff" rx="1"/>
+            <rect x="19" y="8" width="3" height="44" fill="#91caff" rx="1"/>
+            <rect x="26" y="15" width="3" height="30" fill="#91caff" rx="1"/>
+            <rect x="33" y="22" width="3" height="16" fill="#91caff" rx="1"/>
+            <rect x="40" y="10" width="3" height="40" fill="#91caff" rx="1"/>
+            <rect x="47" y="18" width="3" height="24" fill="#91caff" rx="1"/>
+            <rect x="54" y="6" width="3" height="48" fill="#91caff" rx="1"/>
+            <rect x="61" y="14" width="3" height="32" fill="#91caff" rx="1"/>
+            <rect x="68" y="20" width="3" height="20" fill="#91caff" rx="1"/>
+            <!-- 选中区域高亮 -->
+            <rect x="80" y="0" width="200" height="60" fill="#1677ff" opacity="0.15"/>
+            <rect x="80" y="0" width="2" height="60" fill="#1677ff"/>
+            <rect x="278" y="0" width="2" height="60" fill="#1677ff"/>
+            <!-- 选中区域内波形 -->
+            <rect x="85" y="5" width="3" height="50" fill="#1677ff" rx="1"/>
+            <rect x="92" y="12" width="3" height="36" fill="#1677ff" rx="1"/>
+            <rect x="99" y="8" width="3" height="44" fill="#1677ff" rx="1"/>
+            <rect x="106" y="15" width="3" height="30" fill="#1677ff" rx="1"/>
+            <rect x="113" y="10" width="3" height="40" fill="#1677ff" rx="1"/>
+            <rect x="120" y="6" width="3" height="48" fill="#1677ff" rx="1"/>
+            <rect x="127" y="14" width="3" height="32" fill="#1677ff" rx="1"/>
+            <rect x="134" y="18" width="3" height="24" fill="#1677ff" rx="1"/>
+            <rect x="141" y="5" width="3" height="50" fill="#1677ff" rx="1"/>
+            <rect x="148" y="12" width="3" height="36" fill="#1677ff" rx="1"/>
+            <rect x="155" y="8" width="3" height="44" fill="#1677ff" rx="1"/>
+            <rect x="162" y="15" width="3" height="30" fill="#1677ff" rx="1"/>
+            <rect x="169" y="10" width="3" height="40" fill="#1677ff" rx="1"/>
+            <rect x="176" y="6" width="3" height="48" fill="#1677ff" rx="1"/>
+            <rect x="183" y="14" width="3" height="32" fill="#1677ff" rx="1"/>
+            <rect x="190" y="18" width="3" height="24" fill="#1677ff" rx="1"/>
+            <rect x="197" y="5" width="3" height="50" fill="#1677ff" rx="1"/>
+            <rect x="204" y="12" width="3" height="36" fill="#1677ff" rx="1"/>
+            <rect x="211" y="8" width="3" height="44" fill="#1677ff" rx="1"/>
+            <rect x="218" y="15" width="3" height="30" fill="#1677ff" rx="1"/>
+            <rect x="225" y="10" width="3" height="40" fill="#1677ff" rx="1"/>
+            <rect x="232" y="6" width="3" height="48" fill="#1677ff" rx="1"/>
+            <rect x="239" y="14" width="3" height="32" fill="#1677ff" rx="1"/>
+            <rect x="246" y="18" width="3" height="24" fill="#1677ff" rx="1"/>
+            <rect x="253" y="22" width="3" height="16" fill="#1677ff" rx="1"/>
+            <rect x="260" y="20" width="3" height="20" fill="#1677ff" rx="1"/>
+            <!-- 选中区域外继续 -->
+            <rect x="290" y="10" width="3" height="40" fill="#91caff" rx="1"/>
+            <rect x="297" y="18" width="3" height="24" fill="#91caff" rx="1"/>
+            <rect x="304" y="22" width="3" height="16" fill="#91caff" rx="1"/>
+            <rect x="311" y="8" width="3" height="44" fill="#91caff" rx="1"/>
+            <rect x="318" y="14" width="3" height="32" fill="#91caff" rx="1"/>
+            <rect x="325" y="20" width="3" height="20" fill="#91caff" rx="1"/>
+            <rect x="332" y="10" width="3" height="40" fill="#91caff" rx="1"/>
+            <rect x="339" y="15" width="3" height="30" fill="#91caff" rx="1"/>
+            <rect x="346" y="22" width="3" height="16" fill="#91caff" rx="1"/>
+            <rect x="353" y="6" width="3" height="48" fill="#91caff" rx="1"/>
+            <rect x="360" y="18" width="3" height="24" fill="#91caff" rx="1"/>
+            <rect x="367" y="12" width="3" height="36" fill="#91caff" rx="1"/>
+            <rect x="374" y="20" width="3" height="20" fill="#91caff" rx="1"/>
+            <rect x="381" y="10" width="3" height="40" fill="#91caff" rx="1"/>
+            <rect x="388" y="22" width="3" height="16" fill="#91caff" rx="1"/>
+            <rect x="395" y="8" width="3" height="44" fill="#91caff" rx="1"/>
+            <rect x="402" y="15" width="3" height="30" fill="#91caff" rx="1"/>
+            <rect x="409" y="20" width="3" height="20" fill="#91caff" rx="1"/>
+            <rect x="416" y="12" width="3" height="36" fill="#91caff" rx="1"/>
+            <rect x="423" y="18" width="3" height="24" fill="#91caff" rx="1"/>
+          </svg>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:#999;">
+          <span>00:00</span>
+          <span style="color:#1677ff;">选中：00:13 — 01:42</span>
+          <span>03:25</span>
+        </div>
+      </div>
+
+      <!-- 功能子标签 -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="padding:8px 20px;background:#1677ff;color:#fff;border-radius:6px;font-size:13px;font-weight:500;">格式转换</div>
+        <div style="padding:8px 20px;background:#fff;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;">音频压缩</div>
+        <div style="padding:8px 20px;background:#fff;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;">音频裁剪</div>
+      </div>
+
+      <!-- 格式转换面板 -->
+      <div style="background:#fff;border-radius:8px;padding:16px;border:1px solid #e8e8e8;">
+        <div style="display:flex;gap:16px;align-items:center;">
+          <div>
+            <div style="font-size:12px;color:#999;margin-bottom:4px;">输出格式</div>
+            <select style="padding:6px 12px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;min-width:120px;">
+              <option>WAV</option><option>AAC</option><option>M4A</option><option>FLAC</option><option>OGG</option>
+            </select>
+          </div>
+          <div style="flex:1;"></div>
+          <button style="background:#1677ff;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:14px;font-weight:500;cursor:pointer;">开始转换</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

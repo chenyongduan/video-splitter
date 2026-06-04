@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { InputNumber, Space, Typography, Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { formatTime } from "../utils/format";
+import { formatTime } from "../../utils/format";
 
 interface SegmentEditorProps {
   duration: number;

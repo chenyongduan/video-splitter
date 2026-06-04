@@ -8,6 +8,7 @@
     "opener:default",
     "dialog:default",
     "dialog:allow-open",
+    "dialog:allow-save",
     {
       "identifier": "fs:allow-mkdir",
       "allow": [{ "path": "**" }]
@@ -19,6 +20,11 @@
           "name": "binaries/ffmpeg",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/ffprobe",
+          "sidecar": true,
+          "args": true
         }
       ]
     },
@@ -27,6 +33,11 @@
       "allow": [
         {
           "name": "binaries/ffmpeg",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/ffprobe",
           "sidecar": true,
           "args": true
         }
