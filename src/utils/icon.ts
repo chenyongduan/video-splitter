@@ -165,3 +165,79 @@ export async function exportAndroidIcons(
 
   return { outputDir: androidDir, fileCount };
 }
+
+// ===== Tauri =====
+
+const TAURI_ICONS = [
+  { filename: "32x32.png", size: 32 },
+  { filename: "128x128.png", size: 128 },
+  { filename: "128x128@2x.png", size: 256 },
+  { filename: "icon.ico", size: 256 },
+  { filename: "icon.png", size: 1024 },
+];
+
+/**
+ * 导出 Tauri 应用图标。
+ * 在 outputDir 下创建 tauri/icons/ 目录，包含 tauri.conf.json 所需的全部图标。
+ * 注意：icon.icns 直接复制源图（Tauri CLI 同样是 PNG 重命名为 .icns）。
+ */
+export async function exportTauriIcons(
+  inputPath: string,
+  outputDir: string,
+  sourceSize: number,
+): Promise<{ outputDir: string; fileCount: number }> {
+  const tauriDir = await join(outputDir, "tauri", "icons");
+  await mkdir(tauriDir, { recursive: true });
+
+  let fileCount = 0;
+
+  for (const icon of TAURI_ICONS) {
+    if (sourceSize < icon.size) continue;
+
+    const outputPath = await join(tauriDir, icon.filename);
+
+    if (icon.size === sourceSize) {
+      const cmd = Command.sidecar("binaries/ffmpeg", [
+        "-y",
+        "-i",
+        inputPath,
+        outputPath,
+      ]);
+      const result = await cmd.execute();
+      if (result.code !== 0) {
+        throw new Error(`生成 ${icon.filename} 失败: ${result.stderr}`);
+      }
+    } else {
+      const cmd = Command.sidecar("binaries/ffmpeg", [
+        "-y",
+        "-i",
+        inputPath,
+        "-vf",
+        `scale=${icon.size}:${icon.size}`,
+        outputPath,
+      ]);
+      const result = await cmd.execute();
+      if (result.code !== 0) {
+        throw new Error(`生成 ${icon.filename} 失败: ${result.stderr}`);
+      }
+    }
+
+    fileCount++;
+  }
+
+  // icon.icns：直接复制源图（Tauri CLI 的做法）
+  const icnsPath = await join(tauriDir, "icon.icns");
+  const cmd = Command.sidecar("binaries/ffmpeg", [
+    "-y",
+    "-i",
+    inputPath,
+    icnsPath,
+  ]);
+  const result = await cmd.execute();
+  if (result.code !== 0) {
+    throw new Error(`生成 icon.icns 失败: ${result.stderr}`);
+  }
+  fileCount++;
+
+  return { outputDir: tauriDir, fileCount };
+}

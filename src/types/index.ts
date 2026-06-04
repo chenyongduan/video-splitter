@@ -155,7 +155,7 @@ export interface IconInfo {
 }
 
 export interface IconExportResult {
-  platform: "ios" | "android";
+  platform: "ios" | "android" | "tauri";
   outputDir: string;
   fileCount: number;
 }

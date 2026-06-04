@@ -8,7 +8,7 @@ import {
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useAppStore } from "../../store/segmentStore";
-import { exportIosIcons, exportAndroidIcons } from "../../utils/icon";
+import { exportIosIcons, exportAndroidIcons, exportTauriIcons } from "../../utils/icon";
 
 const IconExporter: React.FC = () => {
   const iconPath = useAppStore((s) => s.iconPath);
@@ -20,6 +20,7 @@ const IconExporter: React.FC = () => {
 
   const [iosPath, setIosPath] = useState("");
   const [androidPath, setAndroidPath] = useState("");
+  const [tauriPath, setTauriPath] = useState("");
 
   const handleSelectIosPath = useCallback(async () => {
     try {
@@ -37,6 +38,17 @@ const IconExporter: React.FC = () => {
       const selected = await open({ directory: true });
       if (selected) {
         setAndroidPath(selected as string);
+      }
+    } catch (err) {
+      message.error(`选择目录失败: ${err}`);
+    }
+  }, []);
+
+  const handleSelectTauriPath = useCallback(async () => {
+    try {
+      const selected = await open({ directory: true });
+      if (selected) {
+        setTauriPath(selected as string);
       }
     } catch (err) {
       message.error(`选择目录失败: ${err}`);
@@ -89,6 +101,29 @@ const IconExporter: React.FC = () => {
     }
   }, [iconPath, iconInfo, androidPath, setIconProcessing, setIconProcessResult]);
 
+  const handleExportTauri = useCallback(async () => {
+    if (!iconPath || !iconInfo) return;
+    if (!tauriPath) {
+      message.warning("请先选择输出目录");
+      return;
+    }
+
+    setIconProcessing(true);
+    try {
+      const result = await exportTauriIcons(iconPath, tauriPath, iconInfo.width);
+      setIconProcessResult({
+        platform: "tauri",
+        outputDir: result.outputDir,
+        fileCount: result.fileCount,
+      });
+      message.success(`Tauri 图标导出完成，共 ${result.fileCount} 个文件`);
+    } catch (err) {
+      message.error(`导出失败: ${err}`);
+    } finally {
+      setIconProcessing(false);
+    }
+  }, [iconPath, iconInfo, tauriPath, setIconProcessing, setIconProcessResult]);
+
   const handleOpenDir = useCallback(async (dir: string) => {
     try {
       await revealItemInDir(dir);
@@ -114,6 +149,16 @@ const IconExporter: React.FC = () => {
     { folder: "mipmap-xxhdpi", size: 144 },
     { folder: "mipmap-xxxhdpi", size: 192 },
   ];
+
+  // Tauri 图标列表
+  const tauriIcons = [
+    { filename: "32x32.png", size: 32 },
+    { filename: "128x128.png", size: 128 },
+    { filename: "128x128@2x.png", size: 256 },
+    { filename: "icon.ico", size: 256 },
+    { filename: "icon.png", size: 1024 },
+    { filename: "icon.icns", size: 1024 },
+  ].filter((i) => sourceSize >= i.size);
 
   return (
     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -325,6 +370,114 @@ const IconExporter: React.FC = () => {
 
         {/* 成功后显示打开目录 */}
         {iconProcessResult && iconProcessResult.platform === "android" && (
+          <Button
+            type="link"
+            icon={<FolderOpenOutlined />}
+            onClick={() => handleOpenDir(iconProcessResult.outputDir)}
+            style={{ marginTop: 8, padding: 0 }}
+          >
+            打开输出目录
+          </Button>
+        )}
+      </div>
+
+      {/* Tauri Panel */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: 280,
+          background: "#fff",
+          borderRadius: 10,
+          border: "1px solid #e8e8e8",
+          padding: 16,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 12,
+            fontSize: 15,
+            fontWeight: 600,
+          }}
+        >
+          🖥️ Tauri 图标
+        </div>
+
+        {/* 文件列表 */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            marginBottom: 12,
+          }}
+        >
+          {tauriIcons.map((t) => (
+            <span
+              key={t.filename}
+              style={{
+                padding: "2px 10px",
+                borderRadius: 12,
+                fontSize: 12,
+                background: "#fff7e6",
+                color: "#fa8c16",
+                border: "1px solid #ffd591",
+              }}
+            >
+              {t.filename}
+            </span>
+          ))}
+        </div>
+
+        <div
+          style={{
+            fontSize: 12,
+            color: "#999",
+            marginBottom: 12,
+          }}
+        >
+          输出：tauri/icons/（含 ico、icns、png）
+        </div>
+
+        {/* 路径选择 */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <Button
+            icon={<FolderOpenOutlined />}
+            onClick={handleSelectTauriPath}
+            style={{ flexShrink: 0 }}
+          >
+            选择目录
+          </Button>
+          <div
+            style={{
+              flex: 1,
+              fontSize: 13,
+              color: tauriPath ? "#333" : "#bbb",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              lineHeight: "32px",
+            }}
+          >
+            {tauriPath || "未选择输出目录"}
+          </div>
+        </div>
+
+        <Button
+          type="primary"
+          loading={isIconProcessing}
+          disabled={!tauriPath}
+          onClick={handleExportTauri}
+          block
+          style={{ background: "#fa8c16", borderColor: "#fa8c16" }}
+        >
+          导出 Tauri 图标
+        </Button>
+
+        {/* 成功后显示打开目录 */}
+        {iconProcessResult && iconProcessResult.platform === "tauri" && (
           <Button
             type="link"
             icon={<FolderOpenOutlined />}

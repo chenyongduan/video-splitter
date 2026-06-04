@@ -59,7 +59,7 @@ const App: React.FC = () => {
             { key: "video", label: "视频处理" },
             { key: "audio", label: "音频处理" },
             { key: "image", label: "图片处理" },
-            { key: "icon", label: "图标" },
+            { key: "icon", label: "App图标" },
           ]}
           style={{ marginBottom: 0 }}
         />
