@@ -45,8 +45,7 @@
 │   │   └── lib.rs                # 插件注册（shell, fs, dialog, opener）
 │   ├── capabilities/
 │   │   └── default.json          # 权限配置
-│   ├── binaries/
-│   │   └── ffmpeg-x86_64-pc-windows-msvc.exe  # FFmpeg sidecar
+│   ├── binaries/                 # FFmpeg sidecar（需手动下载，见下方说明）
 │   └── tauri.conf.json           # Tauri 应用配置
 └── docs/
     └── superpowers/specs/        # 架构设计文档
@@ -67,12 +66,34 @@
 # 安装前端依赖
 pnpm install
 
+# 下载 FFmpeg sidecar 二进制（详见下方说明）
+# 将 ffmpeg 可执行文件放入 src-tauri/binaries/ 目录
+
 # 启动开发模式（前端热更新 + Tauri 窗口）
 pnpm tauri dev
 
 # 构建生产版本
 pnpm tauri build
 ```
+
+### FFmpeg Sidecar 配置
+
+本应用通过 Tauri sidecar 机制调用 FFmpeg，需要手动下载 FFmpeg 二进制文件并放入 `src-tauri/binaries/` 目录。
+
+**下载地址：** [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)（选择 `ffmpeg-release-essentials.zip`）
+
+**文件命名规则：**
+
+Tauri sidecar 要求文件名包含目标平台三元组。下载后需按以下格式重命名：
+
+| 平台 | 文件名 |
+|------|--------|
+| Windows x64 | `ffmpeg-x86_64-pc-windows-msvc.exe` |
+| macOS (Apple Silicon) | `ffmpeg-aarch64-apple-darwin` |
+| macOS (Intel) | `ffmpeg-x86_64-apple-darwin` |
+| Linux x64 | `ffmpeg-x86_64-unknown-linux-gnu` |
+
+将对应平台的 `ffmpeg`（或 `ffmpeg.exe`）重命名后放入 `src-tauri/binaries/` 目录即可。
 
 ### 仅前端开发
 
