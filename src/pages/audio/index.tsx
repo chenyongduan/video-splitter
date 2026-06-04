@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { Button, Space, Typography, Spin, message } from "antd";
-import { DeleteOutlined, FolderOpenOutlined } from "@ant-design/icons";
+import { DeleteOutlined, FolderOpenOutlined, SwapOutlined, CompressOutlined, ScissorOutlined } from "@ant-design/icons";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
 import { formatTime } from "../../utils/format";
@@ -65,11 +65,11 @@ const AudioPage: React.FC = () => {
     );
   }
 
-  const tabLabels = {
-    convert: "格式转换",
-    compress: "音频压缩",
-    trim: "音频裁剪",
-  } as const;
+  const tabItems = [
+    { key: "convert" as const, label: "格式转换", icon: <SwapOutlined /> },
+    { key: "compress" as const, label: "音频压缩", icon: <CompressOutlined /> },
+    { key: "trim" as const, label: "音频裁剪", icon: <ScissorOutlined /> },
+  ];
 
   return (
     <>
@@ -131,26 +131,31 @@ const AudioPage: React.FC = () => {
         <AudioWaveform />
 
         {/* Function Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {(["convert", "compress", "trim"] as const).map((tab) => {
-            const active = audioFunctionTab === tab;
+        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+          {tabItems.map((tab) => {
+            const active = audioFunctionTab === tab.key;
             return (
               <div
-                key={tab}
-                onClick={() => setAudioFunctionTab(tab)}
+                key={tab.key}
+                onClick={() => setAudioFunctionTab(tab.key)}
                 style={{
-                  padding: "8px 20px",
-                  borderRadius: 6,
+                  padding: "6px 18px",
+                  borderRadius: 20,
                   fontSize: 13,
                   fontWeight: active ? 500 : 400,
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                   background: active ? "#1677ff" : "#fff",
-                  color: active ? "#fff" : "#333",
+                  color: active ? "#fff" : "#555",
                   border: `1px solid ${active ? "#1677ff" : "#d9d9d9"}`,
                   transition: "all 0.2s",
+                  userSelect: "none",
                 }}
               >
-                {tabLabels[tab]}
+                {tab.icon}
+                {tab.label}
               </div>
             );
           })}
@@ -158,9 +163,18 @@ const AudioPage: React.FC = () => {
 
         {/* Function Panel */}
         <Spin spinning={isAudioProcessing} tip="处理中...">
-          {audioFunctionTab === "convert" && <AudioConverter />}
-          {audioFunctionTab === "compress" && <AudioCompressor />}
-          {audioFunctionTab === "trim" && <AudioTrimmer />}
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 10,
+              border: "1px solid #e8e8e8",
+              padding: 16,
+            }}
+          >
+            {audioFunctionTab === "convert" && <AudioConverter />}
+            {audioFunctionTab === "compress" && <AudioCompressor />}
+            {audioFunctionTab === "trim" && <AudioTrimmer />}
+          </div>
         </Spin>
       </div>
     </>

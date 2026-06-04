@@ -1,6 +1,14 @@
 import React, { useCallback } from "react";
 import { Button, Space, Typography, Spin, message } from "antd";
-import { DeleteOutlined, FolderOpenOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  FolderOpenOutlined,
+  SwapOutlined,
+  CompressOutlined,
+  ColumnWidthOutlined,
+  ScissorOutlined,
+  RotateLeftOutlined,
+} from "@ant-design/icons";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
 import { formatFileSize } from "../../utils/format";
@@ -76,13 +84,13 @@ const ImagePage: React.FC = () => {
     );
   }
 
-  const tabLabels = {
-    convert: "格式转换",
-    compress: "图片压缩",
-    resize: "尺寸调整",
-    crop: "图片裁剪",
-    rotate: "旋转翻转",
-  } as const;
+  const tabItems = [
+    { key: "convert" as const, label: "格式转换", icon: <SwapOutlined /> },
+    { key: "compress" as const, label: "图片压缩", icon: <CompressOutlined /> },
+    { key: "resize" as const, label: "尺寸调整", icon: <ColumnWidthOutlined /> },
+    { key: "crop" as const, label: "图片裁剪", icon: <ScissorOutlined /> },
+    { key: "rotate" as const, label: "旋转翻转", icon: <RotateLeftOutlined /> },
+  ];
 
   return (
     <>
@@ -143,28 +151,31 @@ const ImagePage: React.FC = () => {
         <ImagePreview />
 
         {/* Function Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {(
-            ["convert", "compress", "resize", "crop", "rotate"] as const
-          ).map((tab) => {
-            const active = imageFunctionTab === tab;
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          {tabItems.map((tab) => {
+            const active = imageFunctionTab === tab.key;
             return (
               <div
-                key={tab}
-                onClick={() => setImageFunctionTab(tab)}
+                key={tab.key}
+                onClick={() => setImageFunctionTab(tab.key)}
                 style={{
-                  padding: "8px 20px",
-                  borderRadius: 6,
+                  padding: "6px 18px",
+                  borderRadius: 20,
                   fontSize: 13,
                   fontWeight: active ? 500 : 400,
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                   background: active ? "#1677ff" : "#fff",
-                  color: active ? "#fff" : "#333",
+                  color: active ? "#fff" : "#555",
                   border: `1px solid ${active ? "#1677ff" : "#d9d9d9"}`,
                   transition: "all 0.2s",
+                  userSelect: "none",
                 }}
               >
-                {tabLabels[tab]}
+                {tab.icon}
+                {tab.label}
               </div>
             );
           })}
@@ -172,11 +183,20 @@ const ImagePage: React.FC = () => {
 
         {/* Function Panel */}
         <Spin spinning={isImageProcessing} tip="处理中...">
-          {imageFunctionTab === "convert" && <ImageConverter />}
-          {imageFunctionTab === "compress" && <ImageCompressor />}
-          {imageFunctionTab === "resize" && <ImageResizer />}
-          {imageFunctionTab === "crop" && <ImageCropper />}
-          {imageFunctionTab === "rotate" && <ImageRotator />}
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 10,
+              border: "1px solid #e8e8e8",
+              padding: 16,
+            }}
+          >
+            {imageFunctionTab === "convert" && <ImageConverter />}
+            {imageFunctionTab === "compress" && <ImageCompressor />}
+            {imageFunctionTab === "resize" && <ImageResizer />}
+            {imageFunctionTab === "crop" && <ImageCropper />}
+            {imageFunctionTab === "rotate" && <ImageRotator />}
+          </div>
         </Spin>
       </div>
     </>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Select, Space, message } from "antd";
+import { Button, Select, message } from "antd";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
 import { convertImage } from "../../utils/image";
@@ -70,26 +70,18 @@ const ImageConverter: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        padding: 16,
-        background: "#fff",
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-      }}
-    >
-      <Space>
-        <span style={{ fontSize: 13, color: "#666" }}>目标格式：</span>
-        <Select
-          value={outputFormat}
-          onChange={setOutputFormat}
-          style={{ width: 120 }}
-          options={OUTPUT_FORMATS}
-        />
-        <Button type="primary" loading={loading} onClick={handleConvert}>
-          开始转换
-        </Button>
-      </Space>
+    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <span style={{ fontSize: 13, color: "#666" }}>目标格式：</span>
+      <Select
+        value={outputFormat}
+        onChange={setOutputFormat}
+        style={{ width: 120 }}
+        options={OUTPUT_FORMATS}
+      />
+      <div style={{ flex: 1 }} />
+      <Button type="primary" loading={loading} onClick={handleConvert}>
+        开始转换
+      </Button>
     </div>
   );
 };

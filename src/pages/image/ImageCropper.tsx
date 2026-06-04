@@ -82,97 +82,97 @@ const ImageCropper: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        padding: 16,
-        background: "#fff",
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-      }}
-    >
-      <Space direction="vertical" style={{ width: "100%" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>X：</Text>
-            <InputNumber
-              min={0}
-              max={imageInfo ? imageInfo.width - 1 : 9999}
-              value={cropRect.x}
-              onChange={(v) => {
-                const newX = v ?? 0;
-                const maxW = imageInfo ? imageInfo.width - newX : cropRect.w;
-                setCropRect({
-                  ...cropRect,
-                  x: newX,
-                  w: Math.min(cropRect.w, maxW),
-                });
-              }}
-              style={{ width: 80 }}
-            />
-          </Space>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>Y：</Text>
-            <InputNumber
-              min={0}
-              max={imageInfo ? imageInfo.height - 1 : 9999}
-              value={cropRect.y}
-              onChange={(v) => {
-                const newY = v ?? 0;
-                const maxH = imageInfo ? imageInfo.height - newY : cropRect.h;
-                setCropRect({
-                  ...cropRect,
-                  y: newY,
-                  h: Math.min(cropRect.h, maxH),
-                });
-              }}
-              style={{ width: 80 }}
-            />
-          </Space>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>宽度：</Text>
-            <InputNumber
-              min={1}
-              max={imageInfo ? imageInfo.width - cropRect.x : 9999}
-              value={cropRect.w}
-              onChange={(v) =>
-                setCropRect({ ...cropRect, w: v ?? 0 })
-              }
-              style={{ width: 80 }}
-            />
-          </Space>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>高度：</Text>
-            <InputNumber
-              min={1}
-              max={imageInfo ? imageInfo.height - cropRect.y : 9999}
-              value={cropRect.h}
-              onChange={(v) =>
-                setCropRect({ ...cropRect, h: v ?? 0 })
-              }
-              style={{ width: 80 }}
-            />
-          </Space>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Button onClick={() => {
-            if (imageInfo) {
-              setCropRect({ x: 0, y: 0, w: imageInfo.width, h: imageInfo.height });
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>X：</Text>
+          <InputNumber
+            min={0}
+            max={imageInfo ? imageInfo.width - 1 : 9999}
+            value={cropRect.x}
+            onChange={(v) => {
+              const newX = v ?? 0;
+              const maxW = imageInfo ? imageInfo.width - newX : cropRect.w;
+              setCropRect({
+                ...cropRect,
+                x: newX,
+                w: Math.min(cropRect.w, maxW),
+              });
+            }}
+            style={{ width: 80 }}
+          />
+        </Space>
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>Y：</Text>
+          <InputNumber
+            min={0}
+            max={imageInfo ? imageInfo.height - 1 : 9999}
+            value={cropRect.y}
+            onChange={(v) => {
+              const newY = v ?? 0;
+              const maxH = imageInfo ? imageInfo.height - newY : cropRect.h;
+              setCropRect({
+                ...cropRect,
+                y: newY,
+                h: Math.min(cropRect.h, maxH),
+              });
+            }}
+            style={{ width: 80 }}
+          />
+        </Space>
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>宽度：</Text>
+          <InputNumber
+            min={1}
+            max={imageInfo ? imageInfo.width - cropRect.x : 9999}
+            value={cropRect.w}
+            onChange={(v) =>
+              setCropRect({ ...cropRect, w: v ?? 0 })
             }
-          }}>
-            重置
-          </Button>
-          <Button type="primary" loading={loading} onClick={handleCrop}>
-            裁剪
-          </Button>
-        </div>
-      </Space>
+            style={{ width: 80 }}
+          />
+        </Space>
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>高度：</Text>
+          <InputNumber
+            min={1}
+            max={imageInfo ? imageInfo.height - cropRect.y : 9999}
+            value={cropRect.h}
+            onChange={(v) =>
+              setCropRect({ ...cropRect, h: v ?? 0 })
+            }
+            style={{ width: 80 }}
+          />
+        </Space>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: 8,
+          paddingTop: 8,
+          borderTop: "1px solid #f0f0f0",
+        }}
+      >
+        <Button onClick={() => {
+          if (imageInfo) {
+            setCropRect({ x: 0, y: 0, w: imageInfo.width, h: imageInfo.height });
+          }
+        }}>
+          重置
+        </Button>
+        <Button type="primary" loading={loading} onClick={handleCrop}>
+          裁剪
+        </Button>
+      </div>
     </div>
   );
 };

@@ -94,16 +94,8 @@ const AudioCompressor: React.FC = () => {
   ]);
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 8,
-        padding: 16,
-        border: "1px solid #e8e8e8",
-      }}
-    >
-      <div style={{ marginBottom: 12 }}>
-        <Radio.Group
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Radio.Group
           value={mode}
           onChange={(e) => setMode(e.target.value)}
           style={{ marginBottom: 8 }}
@@ -171,10 +163,16 @@ const AudioCompressor: React.FC = () => {
               ))}
             </Radio.Group>
           </div>
-        )}
-      </div>
+      )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          paddingTop: 8,
+          borderTop: "1px solid #f0f0f0",
+        }}
+      >
         <Button
           type="primary"
           icon={<CompressOutlined />}

@@ -12,6 +12,9 @@ import {
   FolderOpenOutlined,
   InboxOutlined,
   DeleteOutlined,
+  SwapOutlined,
+  CompressOutlined,
+  ScissorOutlined,
 } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -150,11 +153,11 @@ const VideoPage: React.FC = () => {
     );
   }
 
-  const tabLabels = {
-    convert: "格式转换",
-    compress: "视频压缩",
-    split: "视频分割",
-  } as const;
+  const tabItems = [
+    { key: "convert" as const, label: "格式转换", icon: <SwapOutlined /> },
+    { key: "compress" as const, label: "视频压缩", icon: <CompressOutlined /> },
+    { key: "split" as const, label: "视频分割", icon: <ScissorOutlined /> },
+  ];
 
   return (
     <>
@@ -229,26 +232,31 @@ const VideoPage: React.FC = () => {
         </Card>
 
         {/* Function Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {(["convert", "compress", "split"] as const).map((tab) => {
-            const active = videoFunctionTab === tab;
+        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+          {tabItems.map((tab) => {
+            const active = videoFunctionTab === tab.key;
             return (
               <div
-                key={tab}
-                onClick={() => setVideoFunctionTab(tab)}
+                key={tab.key}
+                onClick={() => setVideoFunctionTab(tab.key)}
                 style={{
-                  padding: "8px 20px",
-                  borderRadius: 6,
+                  padding: "6px 18px",
+                  borderRadius: 20,
                   fontSize: 13,
                   fontWeight: active ? 500 : 400,
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                   background: active ? "#1677ff" : "#fff",
-                  color: active ? "#fff" : "#333",
+                  color: active ? "#fff" : "#555",
                   border: `1px solid ${active ? "#1677ff" : "#d9d9d9"}`,
                   transition: "all 0.2s",
+                  userSelect: "none",
                 }}
               >
-                {tabLabels[tab]}
+                {tab.icon}
+                {tab.label}
               </div>
             );
           })}
@@ -256,9 +264,18 @@ const VideoPage: React.FC = () => {
 
         {/* Function Panel */}
         <Spin spinning={isVideoProcessing} tip="处理中...">
-          {videoFunctionTab === "convert" && <VideoConverter />}
-          {videoFunctionTab === "compress" && <VideoCompressor />}
-          {videoFunctionTab === "split" && <VideoSplitter />}
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 10,
+              border: "1px solid #e8e8e8",
+              padding: 16,
+            }}
+          >
+            {videoFunctionTab === "convert" && <VideoConverter />}
+            {videoFunctionTab === "compress" && <VideoCompressor />}
+            {videoFunctionTab === "split" && <VideoSplitter />}
+          </div>
         </Spin>
       </div>
     </>

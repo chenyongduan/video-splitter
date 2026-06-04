@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, InputNumber, Typography, message } from "antd";
+import { Button, InputNumber, message } from "antd";
 import { ScissorOutlined } from "@ant-design/icons";
 import { save } from "@tauri-apps/plugin-dialog";
 import { trimAudio, getAudioInfo } from "../../utils/audio";
@@ -112,26 +112,18 @@ const AudioTrimmer: React.FC = () => {
   ]);
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 8,
-        padding: 16,
-        border: "1px solid #e8e8e8",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div
         style={{
           display: "flex",
-          gap: 16,
-          alignItems: "flex-end",
-          marginBottom: 12,
+          gap: 24,
+          alignItems: "center",
         }}
       >
         <div>
-          <Typography.Text style={{ fontSize: 12, color: "#999" }}>
+          <div style={{ fontSize: 13, color: "#666", marginBottom: 4 }}>
             开始时间
-          </Typography.Text>
+          </div>
           <InputNumber
             min={0}
             max={duration}
@@ -143,9 +135,9 @@ const AudioTrimmer: React.FC = () => {
           />
         </div>
         <div>
-          <Typography.Text style={{ fontSize: 12, color: "#999" }}>
+          <div style={{ fontSize: 13, color: "#666", marginBottom: 4 }}>
             结束时间
-          </Typography.Text>
+          </div>
           <InputNumber
             min={0}
             max={duration}
@@ -156,14 +148,19 @@ const AudioTrimmer: React.FC = () => {
             style={{ width: 180 }}
           />
         </div>
-        <div
-          style={{ fontSize: 13, color: "#666", alignSelf: "center" }}
-        >
+        <div style={{ fontSize: 14, color: "#666", alignSelf: "center", marginTop: 22 }}>
           时长：{formatTime(endTime - startTime)}
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          paddingTop: 8,
+          borderTop: "1px solid #f0f0f0",
+        }}
+      >
         <Button
           type="primary"
           icon={<ScissorOutlined />}

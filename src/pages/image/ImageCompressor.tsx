@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Slider, Space, Typography, message } from "antd";
+import { Button, Slider, Typography, message } from "antd";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
 import { compressImage } from "../../utils/image";
@@ -59,36 +59,34 @@ const ImageCompressor: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        padding: 16,
-        background: "#fff",
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-      }}
-    >
-      <Space direction="vertical" style={{ width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Text style={{ fontSize: 13, color: "#666", minWidth: 60 }}>
-            压缩质量：
-          </Text>
-          <Slider
-            min={1}
-            max={100}
-            value={quality}
-            onChange={setQuality}
-            style={{ flex: 1 }}
-          />
-          <Text strong style={{ minWidth: 40, textAlign: "right" }}>
-            {quality}%
-          </Text>
-        </div>
-        <div>
-          <Button type="primary" loading={loading} onClick={handleCompress}>
-            开始压缩
-          </Button>
-        </div>
-      </Space>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <Text style={{ fontSize: 13, color: "#666", minWidth: 60 }}>
+          压缩质量：
+        </Text>
+        <Slider
+          min={1}
+          max={100}
+          value={quality}
+          onChange={setQuality}
+          style={{ flex: 1 }}
+        />
+        <Text strong style={{ minWidth: 40, textAlign: "right" }}>
+          {quality}%
+        </Text>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          paddingTop: 8,
+          borderTop: "1px solid #f0f0f0",
+        }}
+      >
+        <Button type="primary" loading={loading} onClick={handleCompress}>
+          开始压缩
+        </Button>
+      </div>
     </div>
   );
 };

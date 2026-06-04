@@ -105,68 +105,68 @@ const ImageResizer: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        padding: 16,
-        background: "#fff",
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-      }}
-    >
-      <Space direction="vertical" style={{ width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>宽度：</Text>
-            <InputNumber
-              min={1}
-              max={10000}
-              value={width}
-              onChange={handleWidthChange}
-              style={{ width: 100 }}
-            />
-          </Space>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>高度：</Text>
-            <InputNumber
-              min={1}
-              max={10000}
-              value={height}
-              onChange={handleHeightChange}
-              style={{ width: 100 }}
-            />
-          </Space>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>倍数：</Text>
-            <InputNumber
-              min={0.1}
-              max={10}
-              step={0.1}
-              value={parseFloat(scale.toFixed(2))}
-              onChange={handleScaleChange}
-              style={{ width: 80 }}
-            />
-          </Space>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>锁定比例</Text>
-            <Switch checked={keepRatio} onChange={setKeepRatio} />
-          </Space>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Button onClick={() => {
-            if (imageInfo) {
-              setWidth(imageInfo.width);
-              setHeight(imageInfo.height);
-              setScale(1);
-              setKeepRatio(true);
-            }
-          }}>
-            重置
-          </Button>
-          <Button type="primary" loading={loading} onClick={handleResize}>
-            导出
-          </Button>
-        </div>
-      </Space>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>宽度：</Text>
+          <InputNumber
+            min={1}
+            max={10000}
+            value={width}
+            onChange={handleWidthChange}
+            style={{ width: 100 }}
+          />
+        </Space>
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>高度：</Text>
+          <InputNumber
+            min={1}
+            max={10000}
+            value={height}
+            onChange={handleHeightChange}
+            style={{ width: 100 }}
+          />
+        </Space>
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>倍数：</Text>
+          <InputNumber
+            min={0.1}
+            max={10}
+            step={0.1}
+            value={parseFloat(scale.toFixed(2))}
+            onChange={handleScaleChange}
+            style={{ width: 80 }}
+          />
+        </Space>
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>锁定比例</Text>
+          <Switch checked={keepRatio} onChange={setKeepRatio} />
+        </Space>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: 8,
+          paddingTop: 8,
+          borderTop: "1px solid #f0f0f0",
+        }}
+      >
+        <Button onClick={() => {
+          if (imageInfo) {
+            setWidth(imageInfo.width);
+            setHeight(imageInfo.height);
+            setScale(1);
+            setKeepRatio(true);
+          }
+        }}>
+          重置
+        </Button>
+        <Button type="primary" loading={loading} onClick={handleResize}>
+          导出
+        </Button>
+      </div>
     </div>
   );
 };

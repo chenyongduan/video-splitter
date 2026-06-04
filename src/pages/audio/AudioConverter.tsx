@@ -89,40 +89,31 @@ const AudioConverter: React.FC = () => {
   ]);
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 8,
-        padding: 16,
-        border: "1px solid #e8e8e8",
-      }}
-    >
-      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-        <div>
-          <div
-            style={{ fontSize: 12, color: "#999", marginBottom: 4 }}
-          >
-            输出格式
-          </div>
-          <Select
-            value={outputFormat}
-            onChange={setOutputFormat}
-            style={{ minWidth: 120 }}
-            options={availableFormats.map((f) => ({
-              label: f.toUpperCase(),
-              value: f,
-            }))}
-          />
-        </div>
-        <div style={{ flex: 1 }} />
-        <Button
-          type="primary"
-          icon={<SwapOutlined />}
-          onClick={handleConvert}
+    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+      <div>
+        <div
+          style={{ fontSize: 12, color: "#999", marginBottom: 4 }}
         >
-          开始转换
-        </Button>
+          输出格式
+        </div>
+        <Select
+          value={outputFormat}
+          onChange={setOutputFormat}
+          style={{ minWidth: 120 }}
+          options={availableFormats.map((f) => ({
+            label: f.toUpperCase(),
+            value: f,
+          }))}
+        />
       </div>
+      <div style={{ flex: 1 }} />
+      <Button
+        type="primary"
+        icon={<SwapOutlined />}
+        onClick={handleConvert}
+      >
+        开始转换
+      </Button>
     </div>
   );
 };

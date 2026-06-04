@@ -80,6 +80,9 @@ const VideoSplitter: React.FC = () => {
       <Card
         size="small"
         title="分割区间"
+        bordered={false}
+        style={{ boxShadow: "none", border: "none" }}
+        styles={{ header: { padding: "0 0 8px 0" }, body: { padding: "8px 0 0 0" } }}
         extra={
           <Space size={4}>
             <Button
@@ -120,12 +123,13 @@ const VideoSplitter: React.FC = () => {
         style={{
           display: "flex",
           justifyContent: "flex-end",
-          marginTop: 16,
+          paddingTop: 12,
+          borderTop: "1px solid #f0f0f0",
+          marginTop: 12,
         }}
       >
         <Button
           type="primary"
-          size="large"
           icon={<ScissorOutlined />}
           onClick={handleSplit}
           loading={isSplitting}

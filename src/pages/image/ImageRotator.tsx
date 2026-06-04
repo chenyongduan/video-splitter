@@ -1,8 +1,5 @@
 import React, { useState } from "react";
 import { Button, Space, Switch, Typography, message } from "antd";
-import {
-  RotateLeftOutlined,
-} from "@ant-design/icons";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
 import { rotateImage } from "../../utils/image";
@@ -24,10 +21,10 @@ const ImageRotator: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
 
+  const absRotation = ((rotation % 360) + 360) % 360;
+
   const handleRotate = async () => {
     if (!imagePath || !imageInfo) return;
-
-    const absRotation = ((rotation % 360) + 360) % 360;
 
     if (absRotation === 0 && !flipH && !flipV) {
       message.warning("请先选择旋转或翻转操作");
@@ -83,40 +80,78 @@ const ImageRotator: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        padding: 16,
-        background: "#fff",
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-      }}
-    >
-      <Space direction="vertical" style={{ width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>水平翻转</Text>
-            <Switch checked={flipH} onChange={setFlipH} />
-          </Space>
-          <Space>
-            <Text style={{ fontSize: 13, color: "#666" }}>垂直翻转</Text>
-            <Switch checked={flipV} onChange={setFlipV} />
-          </Space>
-          <Button
-            icon={<RotateLeftOutlined />}
-            onClick={() => setRotation(rotation - 90)}
-          >
-            旋转
-          </Button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        {/* 翻转开关 */}
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>水平翻转</Text>
+          <Switch checked={flipH} onChange={setFlipH} />
+        </Space>
+        <Space>
+          <Text style={{ fontSize: 13, color: "#666" }}>垂直翻转</Text>
+          <Switch checked={flipV} onChange={setFlipV} />
+        </Space>
+
+        <div style={{ width: 1, height: 24, background: "#e8e8e8" }} />
+
+        {/* 逆时针旋转 */}
+        <div
+          onClick={() => setRotation(rotation - 90)}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            background: "#f5f5f5",
+            border: "1px solid #e8e8e8",
+            fontSize: 16,
+            color: "#555",
+          }}
+        >
+          ↺
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Button onClick={() => { setRotation(0); setFlipH(false); setFlipV(false); }}>
-            重置
-          </Button>
-          <Button type="primary" loading={loading} onClick={handleRotate}>
-            导出
-          </Button>
+        {/* 顺时针旋转 */}
+        <div
+          onClick={() => setRotation(rotation + 90)}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            background: "#f5f5f5",
+            border: "1px solid #e8e8e8",
+            fontSize: 16,
+            color: "#555",
+          }}
+        >
+          ↻
         </div>
-      </Space>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: 8,
+          paddingTop: 8,
+          borderTop: "1px solid #f0f0f0",
+        }}
+      >
+        <Button onClick={() => { setRotation(0); setFlipH(false); setFlipV(false); }}>
+          重置
+        </Button>
+        <Button type="primary" loading={loading} onClick={handleRotate}>
+          导出
+        </Button>
+      </div>
     </div>
   );
 };
