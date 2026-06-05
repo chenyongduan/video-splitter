@@ -12,6 +12,7 @@ import {
   exportIosIcons,
   exportAndroidIcons,
   exportTauriIcons,
+  applyCornerRadius,
 } from "../../utils/icon";
 
 const IconExporter: React.FC = () => {
@@ -21,6 +22,7 @@ const IconExporter: React.FC = () => {
   const setIconProcessing = useAppStore((s) => s.setIconProcessing);
   const iconProcessResult = useAppStore((s) => s.iconProcessResult);
   const setIconProcessResult = useAppStore((s) => s.setIconProcessResult);
+  const cornerRadius = useAppStore((s) => s.iconCornerRadius);
 
   const handleExport = useCallback(
     async (platform: "ios" | "android" | "tauri") => {
@@ -37,7 +39,16 @@ const IconExporter: React.FC = () => {
       if (!outputDir) return;
 
       setIconProcessing(true);
+      let cleanup: (() => Promise<void>) | null = null;
       try {
+        // 应用圆角（如果有的话）
+        const { tempPath, cleanup: cleanupFn } = await applyCornerRadius(
+          iconPath,
+          cornerRadius,
+        );
+        cleanup = cleanupFn;
+        const effectivePath = tempPath ?? iconPath;
+
         let result: { outputDir: string; fileCount: number };
         const platformLabel =
           platform === "ios"
@@ -47,11 +58,11 @@ const IconExporter: React.FC = () => {
               : "Tauri";
 
         if (platform === "ios") {
-          result = await exportIosIcons(iconPath, outputDir, iconInfo.width);
+          result = await exportIosIcons(effectivePath, outputDir, iconInfo.width);
         } else if (platform === "android") {
-          result = await exportAndroidIcons(iconPath, outputDir);
+          result = await exportAndroidIcons(effectivePath, outputDir);
         } else {
-          result = await exportTauriIcons(iconPath, outputDir, iconInfo.width);
+          result = await exportTauriIcons(effectivePath, outputDir, iconInfo.width);
         }
 
         setIconProcessResult({
@@ -72,10 +83,11 @@ const IconExporter: React.FC = () => {
       } catch (err) {
         message.error(`导出失败: ${err}`);
       } finally {
+        if (cleanup) await cleanup();
         setIconProcessing(false);
       }
     },
-    [iconPath, iconInfo, setIconProcessing, setIconProcessResult],
+    [iconPath, iconInfo, cornerRadius, setIconProcessing, setIconProcessResult],
   );
 
   if (!iconPath || !iconInfo) return null;

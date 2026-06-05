@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { Button, Space, Typography, Spin, Tag, message } from "antd";
+import { Button, Space, Typography, Spin, Tag, message, Slider } from "antd";
 import {
   DeleteOutlined,
   FolderOpenOutlined,
@@ -24,6 +24,8 @@ const IconPage: React.FC = () => {
   const isIconProcessing = useAppStore((s) => s.isIconProcessing);
   const clearIcon = useAppStore((s) => s.clearIcon);
   const setIconFile = useAppStore((s) => s.setIconFile);
+  const iconCornerRadius = useAppStore((s) => s.iconCornerRadius);
+  const setIconCornerRadius = useAppStore((s) => s.setIconCornerRadius);
 
   const handleLoadImage = useCallback(async () => {
     try {
@@ -146,9 +148,41 @@ const IconPage: React.FC = () => {
             maxWidth: 200,
             maxHeight: 200,
             objectFit: "contain",
-            borderRadius: 4,
+            borderRadius: `${iconCornerRadius}%`,
           }}
         />
+      </div>
+
+      {/* Corner Radius Control */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          padding: "0 16px",
+          marginBottom: 16,
+        }}
+      >
+        <span style={{ fontSize: 13, color: "#666", minWidth: 72 }}>
+          圆角半径：
+        </span>
+        <Slider
+          min={0}
+          max={50}
+          value={iconCornerRadius}
+          onChange={setIconCornerRadius}
+          style={{ flex: 1 }}
+        />
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            minWidth: 36,
+            textAlign: "right",
+          }}
+        >
+          {iconCornerRadius}%
+        </span>
       </div>
 
       {/* Export Panel */}

@@ -1,6 +1,83 @@
 import { Command } from "@tauri-apps/plugin-shell";
-import { mkdir, writeFile, copyFile, remove } from "@tauri-apps/plugin-fs";
-import { join } from "@tauri-apps/api/path";
+import { mkdir, writeFile, readFile, copyFile, remove } from "@tauri-apps/plugin-fs";
+import { join, tempDir } from "@tauri-apps/api/path";
+
+// ===== Corner Radius =====
+
+/**
+ * 将源图片应用圆角效果，生成带透明圆角的 PNG 临时文件。
+ * 使用 Canvas API 渲染圆角矩形 clip path。
+ * @returns tempPath 为 null 表示无需处理（radius=0），cleanup 用于删除临时文件。
+ */
+export async function applyCornerRadius(
+  inputPath: string,
+  cornerRadiusPercent: number,
+): Promise<{ tempPath: string | null; cleanup: () => Promise<void> }> {
+  if (cornerRadiusPercent === 0) {
+    return { tempPath: null, cleanup: async () => {} };
+  }
+
+  // 1. 读取源图文件数据，创建 Blob URL（避免 Canvas 跨域污染）
+  const fileData = await readFile(inputPath);
+  const blobUrl = URL.createObjectURL(new Blob([fileData], { type: "image/png" }));
+  try {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("加载图片失败"));
+      img.src = blobUrl;
+    });
+
+    const size = img.naturalWidth; // 正方形，width === height
+
+    // 2. Canvas 绘制圆角裁剪
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d")!;
+
+    const radius = (cornerRadiusPercent / 100) * size;
+    ctx.clearRect(0, 0, size, size);
+    ctx.beginPath();
+    ctx.moveTo(radius, 0);
+    ctx.lineTo(size - radius, 0);
+    ctx.quadraticCurveTo(size, 0, size, radius);
+    ctx.lineTo(size, size - radius);
+    ctx.quadraticCurveTo(size, size, size - radius, size);
+    ctx.lineTo(radius, size);
+    ctx.quadraticCurveTo(0, size, 0, size - radius);
+    ctx.lineTo(0, radius);
+    ctx.quadraticCurveTo(0, 0, radius, 0);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(img, 0, 0, size, size);
+
+    // 3. 导出为 PNG
+    const blob = await new Promise<Blob>((resolve) =>
+      canvas.toBlob((b) => resolve(b!), "image/png"),
+    );
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+
+    // 4. 写入临时文件
+    const tmp = await tempDir();
+    const tempPath = await join(tmp, `icon_rounded_${Date.now()}.png`);
+    await writeFile(tempPath, bytes);
+
+    // 5. 返回路径 + 清理函数
+    return {
+      tempPath,
+      cleanup: async () => {
+        try {
+          await remove(tempPath);
+        } catch {
+          // 忽略清理错误
+        }
+      },
+    };
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
+}
 
 // ===== iOS =====
 

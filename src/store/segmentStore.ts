@@ -112,12 +112,14 @@ interface AppState {
   isIconLoaded: boolean;
   isIconProcessing: boolean;
   iconProcessResult: IconExportResult | null;
+  iconCornerRadius: number;
 
   // Icon actions
   setIconFile: (path: string, fileName: string, info: IconInfo) => void;
   clearIcon: () => void;
   setIconProcessing: (val: boolean) => void;
   setIconProcessResult: (result: IconExportResult | null) => void;
+  setIconCornerRadius: (val: number) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -177,6 +179,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isIconLoaded: false,
   isIconProcessing: false,
   iconProcessResult: null,
+  iconCornerRadius: 0,
 
   // Video actions
   setVideo: (path, fileName, info) =>
@@ -349,8 +352,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       isIconLoaded: false,
       isIconProcessing: false,
       iconProcessResult: null,
+      iconCornerRadius: 0,
     }),
 
   setIconProcessing: (val) => set({ isIconProcessing: val }),
   setIconProcessResult: (result) => set({ iconProcessResult: result }),
+  setIconCornerRadius: (val) => set({ iconCornerRadius: val }),
 }));
