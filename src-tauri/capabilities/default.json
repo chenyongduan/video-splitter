@@ -33,6 +33,11 @@
           "name": "binaries/ffprobe",
           "sidecar": true,
           "args": true
+        },
+        {
+          "cmd": "/usr/bin/iconutil",
+          "name": "iconutil",
+          "args": true
         }
       ]
     },
@@ -47,6 +52,11 @@
         {
           "name": "binaries/ffprobe",
           "sidecar": true,
+          "args": true
+        },
+        {
+          "cmd": "/usr/bin/iconutil",
+          "name": "iconutil",
           "args": true
         }
       ]
