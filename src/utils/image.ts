@@ -121,7 +121,33 @@ export async function convertImage(
   outputPath: string,
   _params: ImageConvertParams,
 ): Promise<void> {
-  const args = ["-y", "-i", inputPath, outputPath];
+  const args = ["-y", "-i", inputPath];
+
+  // ICO 格式最大支持 256x256，需要先获取输入尺寸并缩放
+  const outputExt = outputPath.split(".").pop()?.toLowerCase() || "";
+  if (outputExt === "ico") {
+    // 读取输入图片尺寸
+    const probeCmd = Command.sidecar("binaries/ffprobe", [
+      "-v", "quiet",
+      "-print_format", "json",
+      "-show_streams",
+      inputPath,
+    ]);
+    const probeResult = await probeCmd.execute();
+    if (probeResult.code === 0) {
+      const probeData = JSON.parse(probeResult.stdout);
+      const stream = probeData.streams?.[0];
+      const w = stream?.width as number || 0;
+      const h = stream?.height as number || 0;
+      if (w > 256 || h > 256) {
+        const scaleW = Math.min(w, 256);
+        const scaleH = Math.min(h, 256);
+        args.push("-vf", `scale=${scaleW}:${scaleH}`);
+      }
+    }
+  }
+
+  args.push(outputPath);
   const command = Command.sidecar("binaries/ffmpeg", args);
   const result = await command.execute();
 
@@ -147,11 +173,13 @@ export async function compressImage(
     const q = Math.round(31 - ((params.quality - 1) / 99) * 29);
     args.push("-q:v", String(q));
   } else if (ext === "webp") {
-    args.push("-quality", String(params.quality));
+    // WebP quality via FFmpeg's -q:v flag (0-100)
+    args.push("-q:v", String(params.quality));
   } else if (ext === "png") {
-    // PNG compression level: 0 (none) → 9 (max)
-    const level = Math.round(9 - ((params.quality - 1) / 99) * 9);
-    args.push("-compression_level", String(level));
+    // PNG is lossless — compression_level only affects DEFLATE effort, not visual quality.
+    // Always use max compression (9) to ensure output is no larger than the original.
+    // Add -pred mixed for better prediction-based compression.
+    args.push("-compression_level", "9", "-pred", "mixed");
   }
 
   args.push(outputPath);

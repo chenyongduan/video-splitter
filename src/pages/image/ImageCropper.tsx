@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Button, InputNumber, Space, Typography, message } from "antd";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
-import { cropImage } from "../../utils/image";
+import { cropImage, getImageInfo } from "../../utils/image";
 
 const { Text } = Typography;
 
@@ -60,13 +60,15 @@ const ImageCropper: React.FC = () => {
         height: cropRect.h,
       });
 
+      const outputInfo = await getImageInfo(outputPath);
+
       setProcessResult({
         inputPath: imagePath,
         outputPath,
         inputFormat: imageInfo.format,
         outputFormat: imageInfo.format,
         inputSize: imageInfo.fileSize,
-        outputSize: 0,
+        outputSize: outputInfo.fileSize,
         inputDimensions: `${imageInfo.width}×${imageInfo.height}`,
         outputDimensions: `${cropRect.w}×${cropRect.h}`,
         taskType: "crop",

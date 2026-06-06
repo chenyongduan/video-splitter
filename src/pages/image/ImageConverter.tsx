@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button, Select, message } from "antd";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
-import { convertImage } from "../../utils/image";
+import { convertImage, getImageInfo } from "../../utils/image";
 
 const OUTPUT_FORMATS = [
   { value: "png", label: "PNG" },
@@ -48,13 +48,15 @@ const ImageConverter: React.FC = () => {
 
       await convertImage(imagePath, outputPath, { outputFormat });
 
+      const outputInfo = await getImageInfo(outputPath);
+
       setProcessResult({
         inputPath: imagePath,
         outputPath,
         inputFormat: imageInfo.format,
         outputFormat,
         inputSize: imageInfo.fileSize,
-        outputSize: 0, // 后续获取
+        outputSize: outputInfo.fileSize,
         inputDimensions: `${imageInfo.width}×${imageInfo.height}`,
         outputDimensions: `${imageInfo.width}×${imageInfo.height}`,
         taskType: "convert",

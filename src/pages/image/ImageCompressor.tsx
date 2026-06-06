@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button, Slider, Typography, message } from "antd";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
-import { compressImage } from "../../utils/image";
+import { compressImage, getImageInfo } from "../../utils/image";
 
 const { Text } = Typography;
 
@@ -37,13 +37,15 @@ const ImageCompressor: React.FC = () => {
 
       await compressImage(imagePath, outputPath, { quality });
 
+      const outputInfo = await getImageInfo(outputPath);
+
       setProcessResult({
         inputPath: imagePath,
         outputPath,
         inputFormat: imageInfo.format,
         outputFormat: imageInfo.format,
         inputSize: imageInfo.fileSize,
-        outputSize: 0,
+        outputSize: outputInfo.fileSize,
         inputDimensions: `${imageInfo.width}×${imageInfo.height}`,
         outputDimensions: `${imageInfo.width}×${imageInfo.height}`,
         taskType: "compress",

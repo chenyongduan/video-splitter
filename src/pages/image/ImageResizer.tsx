@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, InputNumber, Space, Switch, Typography, message } from "antd";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
-import { resizeImage } from "../../utils/image";
+import { resizeImage, getImageInfo } from "../../utils/image";
 
 const { Text } = Typography;
 
@@ -83,13 +83,15 @@ const ImageResizer: React.FC = () => {
         keepAspectRatio: keepRatio,
       });
 
+      const outputInfo = await getImageInfo(outputPath);
+
       setProcessResult({
         inputPath: imagePath,
         outputPath,
         inputFormat: imageInfo.format,
         outputFormat: imageInfo.format,
         inputSize: imageInfo.fileSize,
-        outputSize: 0,
+        outputSize: outputInfo.fileSize,
         inputDimensions: `${imageInfo.width}×${imageInfo.height}`,
         outputDimensions: `${width}×${height}`,
         taskType: "resize",

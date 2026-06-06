@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button, Space, Switch, Typography, message } from "antd";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
-import { rotateImage } from "../../utils/image";
+import { rotateImage, getImageInfo } from "../../utils/image";
 
 const { Text } = Typography;
 
@@ -54,6 +54,8 @@ const ImageRotator: React.FC = () => {
         flipVertical: flipV,
       });
 
+      const outputInfo = await getImageInfo(outputPath);
+
       const rotated = absRotation === 90 || absRotation === 270;
       const outW = rotated ? imageInfo.height : imageInfo.width;
       const outH = rotated ? imageInfo.width : imageInfo.height;
@@ -64,7 +66,7 @@ const ImageRotator: React.FC = () => {
         inputFormat: imageInfo.format,
         outputFormat: imageInfo.format,
         inputSize: imageInfo.fileSize,
-        outputSize: 0,
+        outputSize: outputInfo.fileSize,
         inputDimensions: `${imageInfo.width}×${imageInfo.height}`,
         outputDimensions: `${outW}×${outH}`,
         taskType: "rotate",
