@@ -55,18 +55,20 @@ export async function getVideoInfo(filePath: string): Promise<VideoInfo> {
  * Calls onProgress after each segment completes.
  * Returns the output directory path on success.
  */
-export async function splitVideo(
-  inputPath: string,
-  segments: Segment[],
-  onProgress?: ProgressCallback,
-): Promise<string> {
-  // Create output directory: input_dir/filename_segments/
+export function getDefaultOutputDir(inputPath: string): string {
   const pathParts = inputPath.replace(/\\/g, "/").split("/");
   const fileName = pathParts.pop() || "video.mp4";
   const inputDir = pathParts.join("/");
   const stem = fileName.replace(/\.[^.]+$/, "");
-  const outputDir = `${inputDir}/${stem}_segments`;
+  return `${inputDir}/${stem}_segments`;
+}
 
+export async function splitVideo(
+  inputPath: string,
+  outputDir: string,
+  segments: Segment[],
+  onProgress?: ProgressCallback,
+): Promise<string> {
   // Create output directory if it doesn't exist
   await mkdir(outputDir, { recursive: true });
 

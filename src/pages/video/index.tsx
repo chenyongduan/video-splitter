@@ -43,6 +43,7 @@ const VideoPage: React.FC = () => {
     isVideoProcessing,
     videoProcessResult,
     setVideoProcessResult,
+    segments,
   } = useAppStore();
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -165,13 +166,19 @@ const VideoPage: React.FC = () => {
         result={videoProcessResult}
         extraLines={
           videoProcessResult ? (
-            <>
+            videoProcessResult.taskType === "split" ? (
               <div>
-                分辨率：{videoProcessResult.inputResolution} →{" "}
-                {videoProcessResult.outputResolution}
+                共 {segments.length} 段 · 时长：{formatTime(videoProcessResult.duration)}
               </div>
-              <div>时长：{formatTime(videoProcessResult.duration)}</div>
-            </>
+            ) : (
+              <>
+                <div>
+                  分辨率：{videoProcessResult.inputResolution} →{" "}
+                  {videoProcessResult.outputResolution}
+                </div>
+                <div>时长：{formatTime(videoProcessResult.duration)}</div>
+              </>
+            )
           ) : undefined
         }
         onDone={() => setVideoProcessResult(null)}
