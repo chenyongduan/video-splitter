@@ -196,6 +196,33 @@ export async function compressVideo(
 }
 
 /**
+ * Extract audio from a video file and export as MP3.
+ * Uses LAME encoder with VBR quality 2 (~190kbps).
+ */
+export async function extractAudio(
+  inputPath: string,
+  outputPath: string,
+): Promise<void> {
+  const args = [
+    "-y",
+    "-i",
+    inputPath,
+    "-c:a",
+    "libmp3lame",
+    "-q:a",
+    "2",
+    outputPath,
+  ];
+
+  const command = Command.sidecar("binaries/ffmpeg", args);
+  const result = await command.execute();
+
+  if (result.code !== 0) {
+    throw new Error(`音频导出失败: ${result.stderr}`);
+  }
+}
+
+/**
  * Get video file metadata using ffprobe.
  * Returns file size, format, width, and height.
  */

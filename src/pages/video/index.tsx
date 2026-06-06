@@ -15,6 +15,7 @@ import {
   SwapOutlined,
   CompressOutlined,
   ScissorOutlined,
+  AudioOutlined,
 } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -25,6 +26,7 @@ import VideoPlayer from "./VideoPlayer";
 import VideoConverter from "./VideoConverter";
 import VideoCompressor from "./VideoCompressor";
 import VideoSplitter from "./VideoSplitter";
+import VideoExtractAudio from "./VideoExtractAudio";
 import { useAppStore } from "../../store/segmentStore";
 
 const { Text } = Typography;
@@ -158,6 +160,7 @@ const VideoPage: React.FC = () => {
     { key: "convert" as const, label: "格式转换", icon: <SwapOutlined /> },
     { key: "compress" as const, label: "视频压缩", icon: <CompressOutlined /> },
     { key: "split" as const, label: "视频分割", icon: <ScissorOutlined /> },
+    { key: "extractAudio" as const, label: "导出音频", icon: <AudioOutlined /> },
   ];
 
   return (
@@ -170,6 +173,8 @@ const VideoPage: React.FC = () => {
               <div>
                 共 {segments.length} 段 · 时长：{formatTime(videoProcessResult.duration)}
               </div>
+            ) : videoProcessResult.taskType === "extractAudio" ? (
+              <div>时长：{formatTime(videoProcessResult.duration)}</div>
             ) : (
               <>
                 <div>
@@ -282,6 +287,7 @@ const VideoPage: React.FC = () => {
             {videoFunctionTab === "convert" && <VideoConverter />}
             {videoFunctionTab === "compress" && <VideoCompressor />}
             {videoFunctionTab === "split" && <VideoSplitter />}
+            {videoFunctionTab === "extractAudio" && <VideoExtractAudio />}
           </div>
         </Spin>
       </div>

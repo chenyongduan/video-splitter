@@ -22,9 +22,9 @@ export interface SplitProgress {
 
 // ===== Video Processing =====
 
-export type VideoFunctionTab = "convert" | "compress" | "split";
+export type VideoFunctionTab = "convert" | "compress" | "split" | "extractAudio";
 
-export type VideoTaskType = "convert" | "compress" | "split";
+export type VideoTaskType = "convert" | "compress" | "split" | "extractAudio";
 
 export interface VideoConvertParams {
   outputFormat: string;
