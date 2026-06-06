@@ -44,6 +44,15 @@
     "externalBin": [
       "binaries/ffmpeg",
       "binaries/ffprobe"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": false
+      },
+      "wix": {
+        "language": "zh-CN"
+      }
+    }
   }
 }
