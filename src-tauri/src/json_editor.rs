@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
+use regex::Regex;
 use std::sync::Mutex;
 use tauri::State;
 use std::fs;
@@ -154,6 +155,21 @@ pub struct ValidationResult {
     pub error_message: Option<String>,
     pub error_line: Option<u32>,
     pub error_column: Option<u32>,
+}
+
+/// Single search match result.
+#[derive(Debug, Clone, Serialize)]
+pub struct SearchResult {
+    /// Line number in fully-expanded view (1-based).
+    pub expanded_line: u32,
+    /// Line number in current collapsed view (1-based), 0 if hidden by collapse.
+    pub visible_line: u32,
+    /// Full content of the matched line.
+    pub content: String,
+    /// Byte offset of match start within content.
+    pub match_start: u32,
+    /// Byte offset of match end within content.
+    pub match_end: u32,
 }
 
 /// The editor state.
