@@ -235,10 +235,10 @@ const JsonTreeView: React.FC = () => {
               >
                 <div
                   style={{
-                    width: 50,
                     minWidth: 50,
                     textAlign: "right",
-                    paddingRight: 12,
+                    paddingLeft: 8,
+                    paddingRight: 8,
                     color: "#999",
                     userSelect: "none",
                     borderRight: "1px solid #e8e8e8",
