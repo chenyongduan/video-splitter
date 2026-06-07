@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::sync::Mutex;
+use tauri::State;
+use std::fs;
 
 // ---------------------------------------------------------------------------
 // Data Structures
@@ -596,4 +599,80 @@ fn parse_error_position(msg: &str) -> (Option<u32>, Option<u32>) {
     }
 
     (line, column)
+}
+
+// ---------------------------------------------------------------------------
+// Tauri Commands
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn json_open_file(path: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<(JsonNode, Vec<VisibleLine>), String> {
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("读取文件失败: {}", e))?;
+    let root = parse_json(&content)?;
+    let mut state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
+    state.file_path = Some(path);
+    state.collapsed_nodes.clear();
+    let lines = build_visible_lines(&root, &state.collapsed_nodes);
+    state.root = Some(root.clone());
+    Ok((root, lines))
+}
+
+#[tauri::command]
+pub fn json_toggle_collapse(node_path: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<Vec<VisibleLine>, String> {
+    let mut state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
+    if state.collapsed_nodes.contains(&node_path) {
+        state.collapsed_nodes.remove(&node_path);
+    } else {
+        state.collapsed_nodes.insert(node_path);
+    }
+    let root = state.root.as_ref().ok_or("未加载 JSON 文件")?;
+    Ok(build_visible_lines(root, &state.collapsed_nodes))
+}
+
+#[tauri::command]
+pub fn json_update_node(node_path: String, new_value: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<(JsonNode, Vec<VisibleLine>), String> {
+    let mut state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
+    // First, clone collapsed_nodes to avoid borrow conflicts
+    let collapsed = state.collapsed_nodes.clone();
+    let root = state.root.as_mut().ok_or("未加载 JSON 文件")?;
+    update_node_by_path(root, &node_path, &new_value)?;
+    let lines = build_visible_lines(root, &collapsed);
+    Ok((root.clone(), lines))
+}
+
+#[tauri::command]
+pub fn json_format(content: String) -> Result<String, String> {
+    let value: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("JSON 解析失败: {}", e))?;
+    serde_json::to_string_pretty(&value)
+        .map_err(|e| format!("格式化失败: {}", e))
+}
+
+#[tauri::command]
+pub fn json_minify(content: String) -> Result<String, String> {
+    let value: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("JSON 解析失败: {}", e))?;
+    serde_json::to_string(&value)
+        .map_err(|e| format!("压缩失败: {}", e))
+}
+
+#[tauri::command]
+pub fn json_validate(content: String) -> Result<ValidationResult, String> {
+    Ok(validate_json(&content))
+}
+
+#[tauri::command]
+pub fn json_save(path: String, content: String) -> Result<(), String> {
+    fs::write(&path, content)
+        .map_err(|e| format!("保存文件失败: {}", e))
+}
+
+#[tauri::command]
+pub fn json_get_formatted_text(state: State<'_, Mutex<JsonEditorState>>) -> Result<String, String> {
+    let state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
+    let root = state.root.as_ref().ok_or("未加载 JSON 文件")?;
+    let value = node_to_value(root);
+    serde_json::to_string_pretty(&value)
+        .map_err(|e| format!("序列化失败: {}", e))
 }
