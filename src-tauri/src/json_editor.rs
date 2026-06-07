@@ -1129,19 +1129,22 @@ pub fn json_search(
         return Ok(Vec::new());
     }
 
-    let s = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
-    let _value = s.value.as_ref().ok_or("未加载 JSON 文件")?;
-
-    // Use cached expanded lines instead of regenerating
-    let all_lines = &s.expanded_lines_cache;
-    let expanded_total = all_lines.len() as u32;
-
-    // Build line mapping (expanded → visible) for current collapse state
-    let line_mapping = build_line_mapping(&s.nodes, &s.collapsed_nodes, expanded_total);
+    // Clone what we need and release the lock ASAP so other commands can proceed.
+    let (all_lines, line_mapping) = {
+        let s = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
+        if s.value.is_none() {
+            return Err("未加载 JSON 文件".to_string());
+        }
+        let all_lines = s.expanded_lines_cache.clone();
+        let expanded_total = all_lines.len() as u32;
+        let line_mapping = build_line_mapping(&s.nodes, &s.collapsed_nodes, expanded_total);
+        (all_lines, line_mapping)
+    };
+    // Mutex is released here — search runs without blocking other commands.
 
     // Search each line
     let mut results = Vec::new();
-    for line in all_lines {
+    for line in &all_lines {
         let expanded_idx = (line.line_number - 1) as usize;
         let matches = find_matches(&line.content, &query, case_sensitive, whole_word, use_regex);
         for (start, end) in matches {

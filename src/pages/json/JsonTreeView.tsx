@@ -126,10 +126,12 @@ const JsonTreeView: React.FC = () => {
       setSearchResults(results);
       setCurrentMatchIndex(0);
       setResultsPanelOpen(results.length > 0);
-      // Auto-jump to first visible result
+      // Scroll to first visible result directly (no invoke, just scrollTop)
       if (results.length > 0) {
-        const first = results.find((r) => r.visible_line > 0) || results[0];
-        jumpToResult(first, results);
+        const first = results.find((r) => r.visible_line > 0);
+        if (first && containerRef.current) {
+          containerRef.current.scrollTop = (first.visible_line - 1) * LINE_HEIGHT;
+        }
       }
     } catch (e) {
       message.error(`搜索失败: ${e}`);
@@ -137,72 +139,27 @@ const JsonTreeView: React.FC = () => {
   }, [caseSensitive, wholeWord, useRegex]);
 
   // Jump to a specific search result
-  const jumpToResult = useCallback(async (result: SearchResult, _allResults: SearchResult[]) => {
+  const jumpToResult = useCallback((result: SearchResult) => {
     if (result.visible_line > 0 && containerRef.current) {
       containerRef.current.scrollTop = (result.visible_line - 1) * LINE_HEIGHT;
-      return;
     }
-    // Hidden by collapse — try to expand ancestors
-    try {
-      const lines = await invoke<VisibleLine[]>("json_get_lines", {
-        start: Math.max(0, result.expanded_line - 1),
-        count: 1,
-      });
-      if (lines.length > 0 && lines[0].node_path) {
-        const parts = lines[0].node_path.split(".");
-        for (let i = parts.length - 1; i >= 1; i--) {
-          const ancestorPath = parts.slice(0, i).join(".");
-          try {
-            const [newTotal] = await invoke<[number, VisibleLine[]]>(
-              "json_toggle_collapse",
-              { nodePath: ancestorPath }
-            );
-            // Fetch refreshed lines
-            const currentScroll = containerRef.current?.scrollTop ?? 0;
-            const newStart = Math.max(0, Math.floor(currentScroll / LINE_HEIGHT) - BUFFER);
-            const newLines = await invoke<VisibleLine[]>("json_get_lines", {
-              start: newStart,
-              count: FETCH_SIZE,
-            });
-            setJsonLines(newTotal, newLines, newStart);
-            if (containerRef.current) containerRef.current.scrollTop = currentScroll;
-          } catch {
-            // Not collapsible, try next ancestor
-          }
-        }
-        // Re-search to get updated visible_line values
-        const newResults = await invoke<SearchResult[]>("json_search", {
-          query: searchQuery,
-          caseSensitive,
-          wholeWord,
-          useRegex,
-        });
-        setSearchResults(newResults);
-        const idx = newResults.findIndex(
-          (r) => r.expanded_line === result.expanded_line && r.visible_line > 0
-        );
-        if (idx >= 0 && containerRef.current) {
-          containerRef.current.scrollTop = (newResults[idx].visible_line - 1) * LINE_HEIGHT;
-        }
-      }
-    } catch {
-      // Ignore errors during auto-expand
-    }
-  }, [searchQuery, caseSensitive, wholeWord, useRegex, setJsonLines]);
+    // Hidden results (visible_line === 0) are not auto-expanded;
+    // user can click them in the results panel to expand manually.
+  }, []);
 
   // Navigate to next/prev match
   const goToNextMatch = useCallback(() => {
     if (searchResults.length === 0) return;
     const next = (currentMatchIndex + 1) % searchResults.length;
     setCurrentMatchIndex(next);
-    jumpToResult(searchResults[next], searchResults);
+    jumpToResult(searchResults[next]);
   }, [searchResults, currentMatchIndex, jumpToResult]);
 
   const goToPrevMatch = useCallback(() => {
     if (searchResults.length === 0) return;
     const prev = (currentMatchIndex - 1 + searchResults.length) % searchResults.length;
     setCurrentMatchIndex(prev);
-    jumpToResult(searchResults[prev], searchResults);
+    jumpToResult(searchResults[prev]);
   }, [searchResults, currentMatchIndex, jumpToResult]);
 
   // Close search
@@ -571,7 +528,7 @@ const JsonTreeView: React.FC = () => {
           currentIndex={currentMatchIndex}
           onSelect={(idx) => {
             setCurrentMatchIndex(idx);
-            jumpToResult(searchResults[idx], searchResults);
+            jumpToResult(searchResults[idx]);
           }}
           onClose={() => setResultsPanelOpen(false)}
           panelHeight={resultsPanelHeight}
