@@ -50,7 +50,7 @@ export interface VideoProcessResult {
 }
 
 // ===== Global =====
-export type AppTab = "video" | "audio" | "image" | "icon";
+export type AppTab = "video" | "audio" | "image" | "icon" | "json";
 
 // ===== Audio =====
 export interface AudioInfo {
@@ -158,4 +158,32 @@ export interface IconExportResult {
   platform: "ios" | "android" | "tauri";
   outputDir: string;
   fileCount: number;
+}
+
+// ==================== JSON ====================
+
+export interface JsonNode {
+  key: string | null;
+  value_type: "object" | "array" | "string" | "number" | "boolean" | "null";
+  value: string | null;
+  children: JsonNode[];
+  depth: number;
+  path: string;
+}
+
+export interface VisibleLine {
+  line_number: number;
+  content: string;
+  node_path: string;
+  is_collapsible: boolean;
+  collapsed: boolean;
+  depth: number;
+  is_editable: boolean;
+}
+
+export interface JsonValidationResult {
+  valid: boolean;
+  error_message: string | null;
+  error_line: number | null;
+  error_column: number | null;
 }

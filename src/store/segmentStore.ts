@@ -12,6 +12,9 @@ import type {
   IconInfo,
   IconExportResult,
   AppTab,
+  JsonNode,
+  VisibleLine,
+  JsonValidationResult,
 } from "../types";
 
 interface AppState {
@@ -120,6 +123,21 @@ interface AppState {
   setIconProcessing: (val: boolean) => void;
   setIconProcessResult: (result: IconExportResult | null) => void;
   setIconCornerRadius: (val: number) => void;
+
+  // JSON state
+  jsonPath: string | null;
+  jsonFileName: string | null;
+  isJsonLoaded: boolean;
+  jsonTree: JsonNode | null;
+  jsonVisibleLines: VisibleLine[];
+  jsonValidationError: JsonValidationResult | null;
+
+  // JSON actions
+  setJsonFile: (path: string, fileName: string, tree: JsonNode, visibleLines: VisibleLine[]) => void;
+  clearJson: () => void;
+  setJsonTree: (tree: JsonNode, visibleLines: VisibleLine[]) => void;
+  setJsonVisibleLines: (visibleLines: VisibleLine[]) => void;
+  setJsonValidationError: (result: JsonValidationResult | null) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -358,4 +376,50 @@ export const useAppStore = create<AppState>((set, get) => ({
   setIconProcessing: (val) => set({ isIconProcessing: val }),
   setIconProcessResult: (result) => set({ iconProcessResult: result }),
   setIconCornerRadius: (val) => set({ iconCornerRadius: val }),
+
+  // JSON
+  jsonPath: null,
+  jsonFileName: null,
+  isJsonLoaded: false,
+  jsonTree: null,
+  jsonVisibleLines: [],
+  jsonValidationError: null,
+
+  // JSON actions
+  setJsonFile: (path, fileName, tree, visibleLines) => {
+    set({
+      jsonPath: path,
+      jsonFileName: fileName,
+      isJsonLoaded: true,
+      jsonTree: tree,
+      jsonVisibleLines: visibleLines,
+      jsonValidationError: null,
+    });
+  },
+
+  clearJson: () => {
+    set({
+      jsonPath: null,
+      jsonFileName: null,
+      isJsonLoaded: false,
+      jsonTree: null,
+      jsonVisibleLines: [],
+      jsonValidationError: null,
+    });
+  },
+
+  setJsonTree: (tree, visibleLines) => {
+    set({
+      jsonTree: tree,
+      jsonVisibleLines: visibleLines,
+    });
+  },
+
+  setJsonVisibleLines: (visibleLines) => {
+    set({ jsonVisibleLines: visibleLines });
+  },
+
+  setJsonValidationError: (result) => {
+    set({ jsonValidationError: result });
+  },
 }));
