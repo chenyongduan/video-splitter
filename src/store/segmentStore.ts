@@ -115,6 +115,7 @@ interface AppState {
   isIconProcessing: boolean;
   iconProcessResult: IconExportResult | null;
   iconCornerRadius: number;
+  iconPadding: number;
 
   // Icon actions
   setIconFile: (path: string, fileName: string, info: IconInfo) => void;
@@ -122,6 +123,7 @@ interface AppState {
   setIconProcessing: (val: boolean) => void;
   setIconProcessResult: (result: IconExportResult | null) => void;
   setIconCornerRadius: (val: number) => void;
+  setIconPadding: (val: number) => void;
 
   // JSON state
   jsonPath: string | null;
@@ -199,6 +201,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isIconProcessing: false,
   iconProcessResult: null,
   iconCornerRadius: 0,
+  iconPadding: 0,
 
   // Video actions
   setVideo: (path, fileName, info) =>
@@ -372,11 +375,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       isIconProcessing: false,
       iconProcessResult: null,
       iconCornerRadius: 0,
+      iconPadding: 0,
     }),
 
   setIconProcessing: (val) => set({ isIconProcessing: val }),
   setIconProcessResult: (result) => set({ iconProcessResult: result }),
   setIconCornerRadius: (val) => set({ iconCornerRadius: val }),
+  setIconPadding: (val) => set({ iconPadding: val }),
 
   // JSON
   jsonPath: null,

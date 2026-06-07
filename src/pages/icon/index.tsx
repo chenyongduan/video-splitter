@@ -26,6 +26,8 @@ const IconPage: React.FC = () => {
   const setIconFile = useAppStore((s) => s.setIconFile);
   const iconCornerRadius = useAppStore((s) => s.iconCornerRadius);
   const setIconCornerRadius = useAppStore((s) => s.setIconCornerRadius);
+  const iconPadding = useAppStore((s) => s.iconPadding);
+  const setIconPadding = useAppStore((s) => s.setIconPadding);
 
   const handleLoadImage = useCallback(async () => {
     try {
@@ -141,16 +143,33 @@ const IconPage: React.FC = () => {
           borderRadius: 8,
         }}
       >
-        <img
-          src={src}
-          alt="预览"
-          style={{
-            maxWidth: 200,
-            maxHeight: 200,
-            objectFit: "contain",
-            borderRadius: `${iconCornerRadius}%`,
-          }}
-        />
+        {(() => {
+          const previewSize = 200;
+          const paddingPx = (iconPadding / 100) * previewSize;
+          const innerSize = previewSize - paddingPx * 2;
+          const radiusPx = (iconCornerRadius / 100) * innerSize;
+          return (
+            <div style={{ width: previewSize, height: previewSize, position: "relative" }}>
+              <div
+                style={{
+                  position: "absolute",
+                  left: paddingPx,
+                  top: paddingPx,
+                  width: innerSize,
+                  height: innerSize,
+                  borderRadius: radiusPx,
+                  overflow: "hidden",
+                }}
+              >
+                <img
+                  src={src}
+                  alt="预览"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Corner Radius Control */}
@@ -160,7 +179,7 @@ const IconPage: React.FC = () => {
           alignItems: "center",
           gap: 16,
           padding: "0 16px",
-          marginBottom: 16,
+          marginBottom: 8,
         }}
       >
         <span style={{ fontSize: 13, color: "#666", minWidth: 72 }}>
@@ -182,6 +201,39 @@ const IconPage: React.FC = () => {
           }}
         >
           {iconCornerRadius}%
+        </span>
+      </div>
+
+      {/* Padding Control */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          padding: "0 16px",
+          marginBottom: 16,
+        }}
+      >
+        <span style={{ fontSize: 13, color: "#666", minWidth: 72 }}>
+          图片边距：
+        </span>
+        <Slider
+          min={0}
+          max={10}
+          step={0.5}
+          value={iconPadding}
+          onChange={setIconPadding}
+          style={{ flex: 1 }}
+        />
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            minWidth: 36,
+            textAlign: "right",
+          }}
+        >
+          {iconPadding}%
         </span>
       </div>
 

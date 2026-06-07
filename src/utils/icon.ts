@@ -5,15 +5,18 @@ import { join, tempDir } from "@tauri-apps/api/path";
 // ===== Corner Radius =====
 
 /**
- * 将源图片应用圆角效果，生成带透明圆角的 PNG 临时文件。
+ * 将源图片应用圆角+边距效果，生成带透明圆角和边距的 PNG 临时文件。
  * 使用 Canvas API 渲染圆角矩形 clip path。
- * @returns tempPath 为 null 表示无需处理（radius=0），cleanup 用于删除临时文件。
+ * @param cornerRadiusPercent 圆角百分比 (0-50)
+ * @param paddingPercent 边距百分比 (0-50)
+ * @returns tempPath 为 null 表示无需处理（radius=0 且 padding=0），cleanup 用于删除临时文件。
  */
 export async function applyCornerRadius(
   inputPath: string,
   cornerRadiusPercent: number,
+  paddingPercent: number = 0,
 ): Promise<{ tempPath: string | null; cleanup: () => Promise<void> }> {
-  if (cornerRadiusPercent === 0) {
+  if (cornerRadiusPercent === 0 && paddingPercent === 0) {
     return { tempPath: null, cleanup: async () => {} };
   }
 
@@ -29,6 +32,10 @@ export async function applyCornerRadius(
     });
 
     const size = img.naturalWidth; // 正方形，width === height
+    const padding = (paddingPercent / 100) * size;
+    const innerSize = size - padding * 2;
+    // 圆角半径基于内部区域计算
+    const radius = (cornerRadiusPercent / 100) * innerSize;
 
     // 2. Canvas 绘制圆角裁剪
     const canvas = document.createElement("canvas");
@@ -36,21 +43,28 @@ export async function applyCornerRadius(
     canvas.height = size;
     const ctx = canvas.getContext("2d")!;
 
-    const radius = (cornerRadiusPercent / 100) * size;
     ctx.clearRect(0, 0, size, size);
     ctx.beginPath();
-    ctx.moveTo(radius, 0);
-    ctx.lineTo(size - radius, 0);
-    ctx.quadraticCurveTo(size, 0, size, radius);
-    ctx.lineTo(size, size - radius);
-    ctx.quadraticCurveTo(size, size, size - radius, size);
-    ctx.lineTo(radius, size);
-    ctx.quadraticCurveTo(0, size, 0, size - radius);
-    ctx.lineTo(0, radius);
-    ctx.quadraticCurveTo(0, 0, radius, 0);
+    if (radius >= innerSize / 2) {
+      // radius >= 50% → perfect circle
+      ctx.arc(size / 2, size / 2, innerSize / 2, 0, Math.PI * 2);
+    } else if (radius > 0) {
+      ctx.moveTo(padding + radius, padding);
+      ctx.lineTo(padding + innerSize - radius, padding);
+      ctx.quadraticCurveTo(padding + innerSize, padding, padding + innerSize, padding + radius);
+      ctx.lineTo(padding + innerSize, padding + innerSize - radius);
+      ctx.quadraticCurveTo(padding + innerSize, padding + innerSize, padding + innerSize - radius, padding + innerSize);
+      ctx.lineTo(padding + radius, padding + innerSize);
+      ctx.quadraticCurveTo(padding, padding + innerSize, padding, padding + innerSize - radius);
+      ctx.lineTo(padding, padding + radius);
+      ctx.quadraticCurveTo(padding, padding, padding + radius, padding);
+    } else {
+      // 无圆角，仅有边距
+      ctx.rect(padding, padding, innerSize, innerSize);
+    }
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(img, 0, 0, size, size);
+    ctx.drawImage(img, padding, padding, innerSize, innerSize);
 
     // 3. 导出为 PNG
     const blob = await new Promise<Blob>((resolve) =>

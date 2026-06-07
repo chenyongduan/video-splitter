@@ -23,6 +23,7 @@ const IconExporter: React.FC = () => {
   const iconProcessResult = useAppStore((s) => s.iconProcessResult);
   const setIconProcessResult = useAppStore((s) => s.setIconProcessResult);
   const cornerRadius = useAppStore((s) => s.iconCornerRadius);
+  const padding = useAppStore((s) => s.iconPadding);
 
   const handleExport = useCallback(
     async (platform: "ios" | "android" | "tauri") => {
@@ -41,10 +42,11 @@ const IconExporter: React.FC = () => {
       setIconProcessing(true);
       let cleanup: (() => Promise<void>) | null = null;
       try {
-        // 应用圆角（如果有的话）
+        // 应用圆角+边距（如果有的话）
         const { tempPath, cleanup: cleanupFn } = await applyCornerRadius(
           iconPath,
           cornerRadius,
+          padding,
         );
         cleanup = cleanupFn;
         const effectivePath = tempPath ?? iconPath;
@@ -87,7 +89,7 @@ const IconExporter: React.FC = () => {
         setIconProcessing(false);
       }
     },
-    [iconPath, iconInfo, cornerRadius, setIconProcessing, setIconProcessResult],
+    [iconPath, iconInfo, cornerRadius, padding, setIconProcessing, setIconProcessResult],
   );
 
   if (!iconPath || !iconInfo) return null;
