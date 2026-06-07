@@ -178,3 +178,13 @@ export interface JsonValidationResult {
   error_line: number | null;
   error_column: number | null;
 }
+
+// ===== JSON Search =====
+
+export interface SearchResult {
+  expanded_line: number;
+  visible_line: number;
+  content: string;
+  match_start: number;
+  match_end: number;
+}
