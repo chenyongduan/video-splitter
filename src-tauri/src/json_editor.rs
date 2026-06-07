@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use regex::Regex;
+use regex::RegexBuilder;
 use std::sync::Mutex;
 use tauri::State;
 use std::fs;
@@ -1017,6 +1017,171 @@ fn parse_error_position(msg: &str) -> (Option<u32>, Option<u32>) {
         }
     }
     (line, column)
+}
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/// Build a mapping from expanded-line-number → visible-line-number
+/// for the current collapse state. Returns a Vec where index = expanded line (0-based),
+/// value = visible line (1-based), or 0 if the line is inside a collapsed region.
+fn build_line_mapping(
+    nodes: &[FlatNode],
+    collapsed: &HashSet<u32>,
+    total_expanded: u32,
+) -> Vec<u32> {
+    let mut mapping = vec![0u32; total_expanded as usize];
+    let mut expanded_cursor: u32 = 0;
+    let mut visible_cursor: u32 = 0;
+
+    let mut stack: Vec<(u32, u8)> = vec![(0u32, 0u8)];
+
+    while let Some((idx, phase)) = stack.pop() {
+        if expanded_cursor >= total_expanded { break; }
+
+        let node = &nodes[idx as usize];
+        let is_container = node.value_type == VT_OBJECT || node.value_type == VT_ARRAY;
+
+        if phase == 1 {
+            if (expanded_cursor as usize) < mapping.len() {
+                mapping[expanded_cursor as usize] = visible_cursor + 1;
+            }
+            expanded_cursor += 1;
+            visible_cursor += 1;
+            continue;
+        }
+
+        let is_collapsed = collapsed.contains(&idx);
+
+        if is_container {
+            if is_collapsed {
+                mapping[expanded_cursor as usize] = visible_cursor + 1;
+                expanded_cursor += 1;
+                visible_cursor += 1;
+                if node.expanded_line_count > 1 {
+                    expanded_cursor += node.expanded_line_count - 1;
+                }
+            } else {
+                mapping[expanded_cursor as usize] = visible_cursor + 1;
+                expanded_cursor += 1;
+                visible_cursor += 1;
+
+                stack.push((idx, 1));
+                if node.child_count > 0 {
+                    for i in (0..node.child_count).rev() {
+                        stack.push((node.first_child + i, 0));
+                    }
+                }
+            }
+        } else {
+            mapping[expanded_cursor as usize] = visible_cursor + 1;
+            expanded_cursor += 1;
+            visible_cursor += 1;
+        }
+    }
+
+    mapping
+}
+
+/// Find all match ranges in a string using the given search mode.
+fn find_matches(
+    content: &str,
+    query: &str,
+    case_sensitive: bool,
+    whole_word: bool,
+    use_regex: bool,
+) -> Vec<(u32, u32)> {
+    let pattern = if whole_word && !use_regex {
+        format!(r"\b{}\b", regex::escape(query))
+    } else if use_regex {
+        query.to_string()
+    } else {
+        regex::escape(query)
+    };
+
+    let re = RegexBuilder::new(&pattern)
+        .case_insensitive(!case_sensitive)
+        .size_limit(10 * (1 << 20))
+        .build();
+
+    match re {
+        Ok(re) => re
+            .find_iter(content)
+            .map(|m| (m.start() as u32, m.end() as u32))
+            .collect(),
+        Err(_) => Vec::new(),
+    }
+}
+
+#[tauri::command]
+pub fn json_search(
+    query: String,
+    case_sensitive: bool,
+    whole_word: bool,
+    use_regex: bool,
+    state: State<'_, Mutex<JsonEditorState>>,
+) -> Result<Vec<SearchResult>, String> {
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let s = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
+    let value = s.value.as_ref().ok_or("未加载 JSON 文件")?;
+
+    // Search in fully expanded view (empty collapse set)
+    let empty_collapsed = HashSet::new();
+    let expanded_total = compute_visible_total(&s.nodes, 0, &empty_collapsed);
+
+    let expanded_skip = SkipIndex::build(&s.nodes, 0, &empty_collapsed);
+
+    // Fetch ALL lines in expanded view (chunked)
+    let chunk_size: u32 = 1000;
+    let mut all_lines: Vec<VisibleLine> = Vec::with_capacity(expanded_total as usize);
+    let mut offset: u32 = 0;
+    while offset < expanded_total {
+        let (_, chunk) = get_visible_lines(
+            &s.nodes,
+            &s.key_table,
+            &empty_collapsed,
+            &expanded_skip,
+            expanded_total,
+            value,
+            s.expand_json_strings,
+            offset,
+            chunk_size,
+        );
+        let fetched = chunk.len() as u32;
+        all_lines.extend(chunk);
+        if fetched == 0 { break; }
+        offset += fetched;
+    }
+
+    // Build line mapping (expanded → visible) for current collapse state
+    let line_mapping = build_line_mapping(&s.nodes, &s.collapsed_nodes, expanded_total);
+
+    // Search each line
+    let mut results = Vec::new();
+    for line in &all_lines {
+        let expanded_idx = (line.line_number - 1) as usize;
+        let matches = find_matches(&line.content, &query, case_sensitive, whole_word, use_regex);
+        for (start, end) in matches {
+            let visible = if expanded_idx < line_mapping.len() {
+                line_mapping[expanded_idx]
+            } else {
+                0
+            };
+            results.push(SearchResult {
+                expanded_line: line.line_number,
+                visible_line: visible,
+                content: line.content.clone(),
+                match_start: start,
+                match_end: end,
+            });
+        }
+    }
+
+    Ok(results)
 }
 
 // ---------------------------------------------------------------------------
