@@ -5,6 +5,7 @@ import VideoPage from "./pages/video";
 import AudioPage from "./pages/audio";
 import ImagePage from "./pages/image";
 import IconPage from "./pages/icon";
+import JsonPage from "./pages/json";
 import type { AppTab } from "./types";
 
 const { Header, Content } = Layout;
@@ -18,7 +19,7 @@ const App: React.FC = () => {
   // 启动时从 localStorage 恢复 tab
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && ["video", "audio", "image", "icon"].includes(saved)) {
+    if (saved && ["video", "audio", "image", "icon", "json"].includes(saved)) {
       setActiveTab(saved as AppTab);
     }
   }, [setActiveTab]);
@@ -60,6 +61,7 @@ const App: React.FC = () => {
             { key: "audio", label: "音频处理" },
             { key: "image", label: "图片处理" },
             { key: "icon", label: "App图标" },
+            { key: "json", label: "JSON工具" },
           ]}
           style={{ marginBottom: 0 }}
         />
@@ -70,6 +72,7 @@ const App: React.FC = () => {
         {activeTab === "audio" && <AudioPage />}
         {activeTab === "image" && <ImagePage />}
         {activeTab === "icon" && <IconPage />}
+        {activeTab === "json" && <JsonPage />}
       </Content>
     </Layout>
   );
