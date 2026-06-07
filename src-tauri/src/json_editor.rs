@@ -45,6 +45,8 @@ pub struct JsonEditorState {
     pub root: Option<JsonNode>,
     pub file_path: Option<String>,
     pub collapsed_nodes: HashSet<String>,
+    pub expand_json_strings: bool,
+    pub visible_lines: Vec<VisibleLine>,
 }
 
 impl Default for JsonEditorState {
@@ -53,6 +55,8 @@ impl Default for JsonEditorState {
             root: None,
             file_path: None,
             collapsed_nodes: HashSet::new(),
+            expand_json_strings: true,
+            visible_lines: Vec::new(),
         }
     }
 }
@@ -170,6 +174,7 @@ pub fn value_to_node(
 fn generate_visible_lines(
     node: &JsonNode,
     collapsed: &HashSet<String>,
+    expand_json_strings: bool,
     lines: &mut Vec<VisibleLine>,
     line_num: &mut u32,
 ) {
@@ -213,7 +218,7 @@ fn generate_visible_lines(
 
                 // Children
                 for child in &node.children {
-                    generate_visible_lines(child, collapsed, lines, line_num);
+                    generate_visible_lines(child, collapsed, expand_json_strings, lines, line_num);
                 }
 
                 // Closing line: `}`
@@ -263,7 +268,7 @@ fn generate_visible_lines(
                 *line_num += 1;
 
                 for child in &node.children {
-                    generate_visible_lines(child, collapsed, lines, line_num);
+                    generate_visible_lines(child, collapsed, expand_json_strings, lines, line_num);
                 }
 
                 lines.push(VisibleLine {
@@ -281,6 +286,15 @@ fn generate_visible_lines(
         // Leaf nodes
         _ => {
             let value_str = node.value.as_deref().unwrap_or("null");
+
+            // Try to expand embedded JSON strings
+            if expand_json_strings && node.value_type == "string" {
+                if let Some(expanded_lines) = try_expand_embedded_json(node, collapsed, expand_json_strings, line_num) {
+                    lines.extend(expanded_lines);
+                    return;
+                }
+            }
+
             let content = match &node.key {
                 Some(k) => format!("{}\"{}\": {}", indent(node.depth), k, value_str),
                 None => format!("{}{}", indent(node.depth), value_str),
@@ -299,12 +313,40 @@ fn generate_visible_lines(
     }
 }
 
+/// Try to expand a string node that contains embedded JSON.
+/// Returns Some(lines) if the string is valid JSON object/array, None otherwise.
+fn try_expand_embedded_json(
+    node: &JsonNode,
+    collapsed: &HashSet<String>,
+    expand_json_strings: bool,
+    line_num: &mut u32,
+) -> Option<Vec<VisibleLine>> {
+    let val = node.value.as_deref()?;
+    // Strip outer quotes to get the raw string content
+    let inner = val.strip_prefix('"').and_then(|s| s.strip_suffix('"'))?;
+    if inner.len() < 2 {
+        return None;
+    }
+    // Try to parse as JSON
+    let parsed: serde_json::Value = serde_json::from_str(inner).ok()?;
+    match parsed {
+        serde_json::Value::Object(_) | serde_json::Value::Array(_) => {
+            // Build a temporary sub-tree from the parsed value
+            let sub_root = value_to_node(&parsed, node.key.clone(), node.depth, &node.path);
+            let mut sub_lines = Vec::new();
+            generate_visible_lines(&sub_root, collapsed, expand_json_strings, &mut sub_lines, line_num);
+            Some(sub_lines)
+        }
+        _ => None,
+    }
+}
+
 /// Public wrapper: build the full list of visible lines from the root node,
 /// honouring the current collapse state.
-pub fn build_visible_lines(root: &JsonNode, collapsed: &HashSet<String>) -> Vec<VisibleLine> {
+pub fn build_visible_lines(root: &JsonNode, collapsed: &HashSet<String>, expand_json_strings: bool) -> Vec<VisibleLine> {
     let mut lines = Vec::new();
     let mut line_num: u32 = 1;
-    generate_visible_lines(root, collapsed, &mut lines, &mut line_num);
+    generate_visible_lines(root, collapsed, expand_json_strings, &mut lines, &mut line_num);
     lines
 }
 
@@ -337,8 +379,15 @@ pub fn node_to_value(node: &JsonNode) -> serde_json::Value {
         }
         "string" => {
             // value is stored with surrounding quotes, e.g. `"hello"`
+            // but without proper JSON escaping, so we strip quotes directly
+            // instead of parsing (which fails for strings containing special chars)
             let raw = node.value.as_deref().unwrap_or("\"\"");
-            serde_json::from_str(raw).unwrap_or(serde_json::Value::Null)
+            if raw.starts_with('"') && raw.len() >= 2 {
+                let content = &raw[1..raw.len() - 1];
+                serde_json::Value::String(content.to_string())
+            } else {
+                serde_json::Value::String(raw.to_string())
+            }
         }
         "number" => {
             let raw = node.value.as_deref().unwrap_or("0");
@@ -482,7 +531,7 @@ mod tests {
     fn test_build_visible_lines_expanded() {
         let json = r#"{"name": "test"}"#;
         let root = parse_json(json).unwrap();
-        let lines = build_visible_lines(&root, &HashSet::new());
+        let lines = build_visible_lines(&root, &HashSet::new(), true);
         // Should produce: {  "name": test  }
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0].content, "{");
@@ -497,7 +546,7 @@ mod tests {
         let root = parse_json(json).unwrap();
         let mut collapsed = HashSet::new();
         collapsed.insert("root.obj".to_string());
-        let lines = build_visible_lines(&root, &collapsed);
+        let lines = build_visible_lines(&root, &collapsed, true);
         // Should produce: {  "obj": { ... } // 1 item  }
         assert_eq!(lines.len(), 3); // outer {, collapsed obj line, outer }
         assert!(lines[1].collapsed);
@@ -531,6 +580,22 @@ mod tests {
         update_node_by_path(&mut root, "root.count", "99").unwrap();
         let value = node_to_value(&root);
         assert_eq!(value["count"], serde_json::Value::Number(99.into()));
+    }
+
+    #[test]
+    fn test_node_to_value_string_with_embedded_json() {
+        let json = r#"{"items": [1, 2, "{\"key\": \"val\"}"]}"#;
+        let root = parse_json(json).unwrap();
+        let value = node_to_value(&root);
+        let output = serde_json::to_string(&value).unwrap();
+        let original: serde_json::Value = serde_json::from_str(json).unwrap();
+        let roundtripped: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(original, roundtripped);
+        // Specifically check the third array element is NOT null
+        assert_eq!(
+            roundtripped["items"][2],
+            serde_json::Value::String("{\"key\": \"val\"}".to_string())
+        );
     }
 
     #[test]
@@ -606,20 +671,37 @@ fn parse_error_position(msg: &str) -> (Option<u32>, Option<u32>) {
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn json_open_file(path: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<(JsonNode, Vec<VisibleLine>), String> {
+pub fn json_open_file(path: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<(u32, Vec<VisibleLine>), String> {
     let content = fs::read_to_string(&path)
         .map_err(|e| format!("读取文件失败: {}", e))?;
     let root = parse_json(&content)?;
     let mut state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
     state.file_path = Some(path);
     state.collapsed_nodes.clear();
-    let lines = build_visible_lines(&root, &state.collapsed_nodes);
-    state.root = Some(root.clone());
-    Ok((root, lines))
+    let expand = state.expand_json_strings;
+    let lines = build_visible_lines(&root, &state.collapsed_nodes, expand);
+    let total = lines.len() as u32;
+    state.root = Some(root);
+    state.visible_lines = lines;
+    // Return total + first 100 lines for immediate display
+    let page_end = 100.min(state.visible_lines.len());
+    Ok((total, state.visible_lines[0..page_end].to_vec()))
 }
 
 #[tauri::command]
-pub fn json_toggle_collapse(node_path: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<Vec<VisibleLine>, String> {
+pub fn json_get_lines(start: u32, count: u32, state: State<'_, Mutex<JsonEditorState>>) -> Result<Vec<VisibleLine>, String> {
+    let state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
+    let s = start as usize;
+    let c = count as usize;
+    if s >= state.visible_lines.len() {
+        return Ok(Vec::new());
+    }
+    let end = (s + c).min(state.visible_lines.len());
+    Ok(state.visible_lines[s..end].to_vec())
+}
+
+#[tauri::command]
+pub fn json_toggle_collapse(node_path: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<(u32, Vec<VisibleLine>), String> {
     let mut state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
     if state.collapsed_nodes.contains(&node_path) {
         state.collapsed_nodes.remove(&node_path);
@@ -627,18 +709,37 @@ pub fn json_toggle_collapse(node_path: String, state: State<'_, Mutex<JsonEditor
         state.collapsed_nodes.insert(node_path);
     }
     let root = state.root.as_ref().ok_or("未加载 JSON 文件")?;
-    Ok(build_visible_lines(root, &state.collapsed_nodes))
+    let expand = state.expand_json_strings;
+    state.visible_lines = build_visible_lines(root, &state.collapsed_nodes, expand);
+    let total = state.visible_lines.len() as u32;
+    // Return total + first 100 lines (scroll will reset)
+    let page_end = 100.min(state.visible_lines.len());
+    Ok((total, state.visible_lines[0..page_end].to_vec()))
 }
 
 #[tauri::command]
-pub fn json_update_node(node_path: String, new_value: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<(JsonNode, Vec<VisibleLine>), String> {
+pub fn json_update_node(node_path: String, new_value: String, state: State<'_, Mutex<JsonEditorState>>) -> Result<(u32, Vec<VisibleLine>), String> {
     let mut state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
-    // First, clone collapsed_nodes to avoid borrow conflicts
     let collapsed = state.collapsed_nodes.clone();
+    let expand = state.expand_json_strings;
     let root = state.root.as_mut().ok_or("未加载 JSON 文件")?;
     update_node_by_path(root, &node_path, &new_value)?;
-    let lines = build_visible_lines(root, &collapsed);
-    Ok((root.clone(), lines))
+    state.visible_lines = build_visible_lines(root, &collapsed, expand);
+    let total = state.visible_lines.len() as u32;
+    let page_end = 100.min(state.visible_lines.len());
+    Ok((total, state.visible_lines[0..page_end].to_vec()))
+}
+
+#[tauri::command]
+pub fn json_toggle_expand_strings(state: State<'_, Mutex<JsonEditorState>>) -> Result<(u32, Vec<VisibleLine>), String> {
+    let mut state = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
+    state.expand_json_strings = !state.expand_json_strings;
+    let root = state.root.as_ref().ok_or("未加载 JSON 文件")?;
+    let expand = state.expand_json_strings;
+    state.visible_lines = build_visible_lines(root, &state.collapsed_nodes, expand);
+    let total = state.visible_lines.len() as u32;
+    let page_end = 100.min(state.visible_lines.len());
+    Ok((total, state.visible_lines[0..page_end].to_vec()))
 }
 
 #[tauri::command]

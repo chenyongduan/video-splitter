@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Space, Tooltip, message } from "antd";
+import { Button, Space, Switch, Tooltip, message } from "antd";
 import {
   FolderOpenOutlined,
   SaveOutlined,
@@ -11,34 +11,37 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../store/segmentStore";
-import type { JsonNode, VisibleLine, JsonValidationResult } from "../../types";
+import type { VisibleLine, JsonValidationResult } from "../../types";
 
 const JsonToolbar: React.FC = () => {
   const {
     jsonPath,
     jsonFileName,
     isJsonLoaded,
+    jsonExpandStrings,
     setJsonFile,
+    setJsonLines,
     setJsonValidationError,
+    setJsonExpandStrings,
   } = useAppStore();
 
   const handleOpenFile = async () => {
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: "JSON", extensions: ["json"] }],
+        filters: [{ name: "JSON", extensions: ["json", "replay"] }],
       });
       if (!selected) return;
 
       const filePath = selected as string;
       const fileName = filePath.split(/[\\/]/).pop() || filePath;
 
-      const [tree, lines] = await invoke<[JsonNode, VisibleLine[]]>(
+      const [total, firstPage] = await invoke<[number, VisibleLine[]]>(
         "json_open_file",
         { path: filePath }
       );
 
-      setJsonFile(filePath, fileName, tree, lines);
+      setJsonFile(filePath, fileName, total, firstPage);
       setJsonValidationError(null);
     } catch (e) {
       message.error(`打开文件失败: ${e}`);
@@ -49,7 +52,8 @@ const JsonToolbar: React.FC = () => {
     if (!jsonPath) return;
     try {
       const text = await invoke<string>("json_get_formatted_text");
-      await invoke("json_save", { path: jsonPath, content: text });
+      const minified = await invoke<string>("json_minify", { content: text });
+      await invoke("json_save", { path: jsonPath, content: minified });
       message.success("保存成功");
     } catch (e) {
       message.error(`保存失败: ${e}`);
@@ -59,12 +63,13 @@ const JsonToolbar: React.FC = () => {
   const handleSaveAs = async () => {
     try {
       const text = await invoke<string>("json_get_formatted_text");
+      const minified = await invoke<string>("json_minify", { content: text });
       const outputPath = await save({
-        filters: [{ name: "JSON", extensions: ["json"] }],
+        filters: [{ name: "JSON", extensions: ["json", "replay"] }],
         defaultPath: jsonFileName || "untitled.json",
       });
       if (!outputPath) return;
-      await invoke("json_save", { path: outputPath, content: text });
+      await invoke("json_save", { path: outputPath, content: minified });
       message.success("另存为成功");
     } catch (e) {
       message.error(`另存为失败: ${e}`);
@@ -111,6 +116,18 @@ const JsonToolbar: React.FC = () => {
       }
     } catch (e) {
       message.error(`校验失败: ${e}`);
+    }
+  };
+
+  const handleToggleExpandStrings = async (checked: boolean) => {
+    try {
+      const [total, firstPage] = await invoke<[number, VisibleLine[]]>(
+        "json_toggle_expand_strings"
+      );
+      setJsonLines(total, firstPage, 0);
+      setJsonExpandStrings(checked);
+    } catch (e) {
+      message.error(`切换失败: ${e}`);
     }
   };
 
@@ -185,6 +202,24 @@ const JsonToolbar: React.FC = () => {
           </Button>
         </Tooltip>
       </Space>
+      <div
+        style={{
+          marginLeft: "auto",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 13,
+          color: "#666",
+        }}
+      >
+        <span>展开内嵌JSON</span>
+        <Switch
+          size="small"
+          checked={jsonExpandStrings}
+          onChange={handleToggleExpandStrings}
+          disabled={!isJsonLoaded}
+        />
+      </div>
     </div>
   );
 };

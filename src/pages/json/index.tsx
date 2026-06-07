@@ -5,7 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAppStore } from "../../store/segmentStore";
 import JsonToolbar from "./JsonToolbar";
 import JsonTreeView from "./JsonTreeView";
-import type { JsonNode, VisibleLine } from "../../types";
+import type { VisibleLine } from "../../types";
 
 const JsonPage: React.FC = () => {
   const { isJsonLoaded, setJsonFile } = useAppStore();
@@ -13,17 +13,17 @@ const JsonPage: React.FC = () => {
   const handleFileDrop = useCallback(
     async (paths: string[]) => {
       const path = paths[0];
-      if (!path.toLowerCase().endsWith(".json")) {
+      if (!path.toLowerCase().endsWith(".json") && !path.toLowerCase().endsWith(".replay")) {
         message.warning("请拖入 JSON 文件");
         return;
       }
       try {
         const fileName = path.split(/[\\/]/).pop() || path;
-        const [tree, lines] = await invoke<[JsonNode, VisibleLine[]]>(
+        const [total, firstPage] = await invoke<[number, VisibleLine[]]>(
           "json_open_file",
           { path }
         );
-        setJsonFile(path, fileName, tree, lines);
+        setJsonFile(path, fileName, total, firstPage);
       } catch (e) {
         message.error(`打开文件失败: ${e}`);
       }
@@ -42,43 +42,6 @@ const JsonPage: React.FC = () => {
     };
   }, [handleFileDrop]);
 
-  if (!isJsonLoaded) {
-    return (
-      <div
-        style={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#999",
-        }}
-        onDragOver={(e) => e.preventDefault()}
-      >
-        <div
-          style={{
-            width: 320,
-            height: 200,
-            border: "2px dashed #d9d9d9",
-            borderRadius: 8,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            fontSize: 16,
-          }}
-        >
-          <span style={{ fontSize: 40 }}>📄</span>
-          <span>拖拽 JSON 文件到此处</span>
-          <span style={{ fontSize: 13, color: "#bbb" }}>
-            或使用顶部「选择文件」按钮
-          </span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       style={{
@@ -88,9 +51,44 @@ const JsonPage: React.FC = () => {
       }}
     >
       <JsonToolbar />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <JsonTreeView />
-      </div>
+      {isJsonLoaded ? (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <JsonTreeView />
+        </div>
+      ) : (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#999",
+          }}
+          onDragOver={(e) => e.preventDefault()}
+        >
+          <div
+            style={{
+              width: 320,
+              height: 200,
+              border: "2px dashed #d9d9d9",
+              borderRadius: 8,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              fontSize: 16,
+            }}
+          >
+            <span style={{ fontSize: 40 }}>📄</span>
+            <span>拖拽 JSON 文件到此处</span>
+            <span style={{ fontSize: 13, color: "#bbb" }}>
+              或使用顶部「选择文件」按钮
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

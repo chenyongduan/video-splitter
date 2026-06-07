@@ -19,6 +19,8 @@ pub fn run() {
             json_editor::json_validate,
             json_editor::json_save,
             json_editor::json_get_formatted_text,
+            json_editor::json_toggle_expand_strings,
+            json_editor::json_get_lines,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -12,7 +12,6 @@ import type {
   IconInfo,
   IconExportResult,
   AppTab,
-  JsonNode,
   VisibleLine,
   JsonValidationResult,
 } from "../types";
@@ -128,16 +127,18 @@ interface AppState {
   jsonPath: string | null;
   jsonFileName: string | null;
   isJsonLoaded: boolean;
-  jsonTree: JsonNode | null;
-  jsonVisibleLines: VisibleLine[];
+  jsonTotalLines: number;
+  jsonFetchedLines: VisibleLine[];
+  jsonFetchStart: number;
   jsonValidationError: JsonValidationResult | null;
+  jsonExpandStrings: boolean;
 
   // JSON actions
-  setJsonFile: (path: string, fileName: string, tree: JsonNode, visibleLines: VisibleLine[]) => void;
+  setJsonFile: (path: string, fileName: string, totalLines: number, firstPage: VisibleLine[]) => void;
   clearJson: () => void;
-  setJsonTree: (tree: JsonNode, visibleLines: VisibleLine[]) => void;
-  setJsonVisibleLines: (visibleLines: VisibleLine[]) => void;
+  setJsonLines: (totalLines: number, fetchedLines: VisibleLine[], fetchStart: number) => void;
   setJsonValidationError: (result: JsonValidationResult | null) => void;
+  setJsonExpandStrings: (val: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -381,18 +382,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   jsonPath: null,
   jsonFileName: null,
   isJsonLoaded: false,
-  jsonTree: null,
-  jsonVisibleLines: [],
+  jsonTotalLines: 0,
+  jsonFetchedLines: [],
+  jsonFetchStart: 0,
   jsonValidationError: null,
+  jsonExpandStrings: true,
 
   // JSON actions
-  setJsonFile: (path, fileName, tree, visibleLines) => {
+  setJsonFile: (path, fileName, totalLines, firstPage) => {
     set({
       jsonPath: path,
       jsonFileName: fileName,
       isJsonLoaded: true,
-      jsonTree: tree,
-      jsonVisibleLines: visibleLines,
+      jsonTotalLines: totalLines,
+      jsonFetchedLines: firstPage,
+      jsonFetchStart: 0,
       jsonValidationError: null,
     });
   },
@@ -402,24 +406,26 @@ export const useAppStore = create<AppState>((set, get) => ({
       jsonPath: null,
       jsonFileName: null,
       isJsonLoaded: false,
-      jsonTree: null,
-      jsonVisibleLines: [],
+      jsonTotalLines: 0,
+      jsonFetchedLines: [],
+      jsonFetchStart: 0,
       jsonValidationError: null,
     });
   },
 
-  setJsonTree: (tree, visibleLines) => {
+  setJsonLines: (totalLines, fetchedLines, fetchStart) => {
     set({
-      jsonTree: tree,
-      jsonVisibleLines: visibleLines,
+      jsonTotalLines: totalLines,
+      jsonFetchedLines: fetchedLines,
+      jsonFetchStart: fetchStart,
     });
-  },
-
-  setJsonVisibleLines: (visibleLines) => {
-    set({ jsonVisibleLines: visibleLines });
   },
 
   setJsonValidationError: (result) => {
     set({ jsonValidationError: result });
+  },
+
+  setJsonExpandStrings: (val) => {
+    set({ jsonExpandStrings: val });
   },
 }));
