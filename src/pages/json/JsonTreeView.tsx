@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Input, message } from "antd";
 import {
   CaretRightOutlined,
@@ -7,7 +7,9 @@ import {
 } from "@ant-design/icons";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppStore } from "../../store/segmentStore";
-import type { VisibleLine } from "../../types";
+import type { VisibleLine, SearchResult } from "../../types";
+import JsonSearchBar from "./JsonSearchBar";
+import JsonSearchResults from "./JsonSearchResults";
 
 const LINE_HEIGHT = 22;
 const BUFFER = 30;
@@ -19,6 +21,7 @@ const JsonTreeView: React.FC = () => {
     jsonFetchedLines,
     jsonFetchStart,
     jsonValidationError,
+    isJsonLoaded,
     setJsonLines,
   } = useAppStore();
 
@@ -27,6 +30,17 @@ const JsonTreeView: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewHeight, setViewHeight] = useState(600);
+
+  // Search state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
+  const [useRegex, setUseRegex] = useState(false);
+  const [resultsPanelHeight, setResultsPanelHeight] = useState(200);
+  const [resultsPanelOpen, setResultsPanelOpen] = useState(false);
 
   // Timestamp tooltip state
   const [tsTooltip, setTsTooltip] = useState<{
@@ -91,6 +105,157 @@ const JsonTreeView: React.FC = () => {
     }
     setTsTooltip(null);
   }, []);
+
+  // ==================== Search logic ====================
+
+  // Execute search
+  const doSearch = useCallback(async (query: string, cs?: boolean, ww?: boolean, rx?: boolean) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setCurrentMatchIndex(0);
+      setResultsPanelOpen(false);
+      return;
+    }
+    try {
+      const results = await invoke<SearchResult[]>("json_search", {
+        query,
+        caseSensitive: cs ?? caseSensitive,
+        wholeWord: ww ?? wholeWord,
+        useRegex: rx ?? useRegex,
+      });
+      setSearchResults(results);
+      setCurrentMatchIndex(0);
+      setResultsPanelOpen(results.length > 0);
+      // Auto-jump to first visible result
+      if (results.length > 0) {
+        const first = results.find((r) => r.visible_line > 0) || results[0];
+        jumpToResult(first, results);
+      }
+    } catch (e) {
+      message.error(`搜索失败: ${e}`);
+    }
+  }, [caseSensitive, wholeWord, useRegex]);
+
+  // Jump to a specific search result
+  const jumpToResult = useCallback(async (result: SearchResult, _allResults: SearchResult[]) => {
+    if (result.visible_line > 0 && containerRef.current) {
+      containerRef.current.scrollTop = (result.visible_line - 1) * LINE_HEIGHT;
+      return;
+    }
+    // Hidden by collapse — try to expand ancestors
+    try {
+      const lines = await invoke<VisibleLine[]>("json_get_lines", {
+        start: Math.max(0, result.expanded_line - 1),
+        count: 1,
+      });
+      if (lines.length > 0 && lines[0].node_path) {
+        const parts = lines[0].node_path.split(".");
+        for (let i = parts.length - 1; i >= 1; i--) {
+          const ancestorPath = parts.slice(0, i).join(".");
+          try {
+            const [newTotal] = await invoke<[number, VisibleLine[]]>(
+              "json_toggle_collapse",
+              { nodePath: ancestorPath }
+            );
+            // Fetch refreshed lines
+            const currentScroll = containerRef.current?.scrollTop ?? 0;
+            const newStart = Math.max(0, Math.floor(currentScroll / LINE_HEIGHT) - BUFFER);
+            const newLines = await invoke<VisibleLine[]>("json_get_lines", {
+              start: newStart,
+              count: FETCH_SIZE,
+            });
+            setJsonLines(newTotal, newLines, newStart);
+            if (containerRef.current) containerRef.current.scrollTop = currentScroll;
+          } catch {
+            // Not collapsible, try next ancestor
+          }
+        }
+        // Re-search to get updated visible_line values
+        const newResults = await invoke<SearchResult[]>("json_search", {
+          query: searchQuery,
+          caseSensitive,
+          wholeWord,
+          useRegex,
+        });
+        setSearchResults(newResults);
+        const idx = newResults.findIndex(
+          (r) => r.expanded_line === result.expanded_line && r.visible_line > 0
+        );
+        if (idx >= 0 && containerRef.current) {
+          containerRef.current.scrollTop = (newResults[idx].visible_line - 1) * LINE_HEIGHT;
+        }
+      }
+    } catch {
+      // Ignore errors during auto-expand
+    }
+  }, [searchQuery, caseSensitive, wholeWord, useRegex, setJsonLines]);
+
+  // Navigate to next/prev match
+  const goToNextMatch = useCallback(() => {
+    if (searchResults.length === 0) return;
+    const next = (currentMatchIndex + 1) % searchResults.length;
+    setCurrentMatchIndex(next);
+    jumpToResult(searchResults[next], searchResults);
+  }, [searchResults, currentMatchIndex, jumpToResult]);
+
+  const goToPrevMatch = useCallback(() => {
+    if (searchResults.length === 0) return;
+    const prev = (currentMatchIndex - 1 + searchResults.length) % searchResults.length;
+    setCurrentMatchIndex(prev);
+    jumpToResult(searchResults[prev], searchResults);
+  }, [searchResults, currentMatchIndex, jumpToResult]);
+
+  // Close search
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchResults([]);
+    setSearchQuery("");
+    setCurrentMatchIndex(0);
+    setResultsPanelOpen(false);
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "f") {
+        e.preventDefault();
+        if (!isJsonLoaded) return;
+        setSearchOpen(true);
+        return;
+      }
+      if (mod && e.key === "d" && searchOpen) {
+        e.preventDefault();
+        goToNextMatch();
+        return;
+      }
+      if (e.key === "Escape" && searchOpen) {
+        e.preventDefault();
+        closeSearch();
+        return;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isJsonLoaded, searchOpen, goToNextMatch, closeSearch]);
+
+  // Build a map: line_number → search results for that line
+  const searchHitsByLine = useMemo(() => {
+    const map = new Map<number, { results: SearchResult[]; isCurrent: boolean }>();
+    if (searchResults.length === 0) return map;
+    for (let i = 0; i < searchResults.length; i++) {
+      const r = searchResults[i];
+      if (r.visible_line === 0) continue;
+      const existing = map.get(r.visible_line);
+      if (existing) {
+        existing.results.push(r);
+        if (i === currentMatchIndex) existing.isCurrent = true;
+      } else {
+        map.set(r.visible_line, { results: [r], isCurrent: i === currentMatchIndex });
+      }
+    }
+    return map;
+  }, [searchResults, currentMatchIndex]);
 
   const handleDoubleClick = useCallback((_e: React.MouseEvent) => {
     const selection = window.getSelection();
@@ -196,21 +361,56 @@ const JsonTreeView: React.FC = () => {
       : [];
 
   return (
-    <div
-      ref={containerRef}
-      onScroll={handleScroll}
-      onDoubleClick={handleDoubleClick}
-      style={{
-        flex: 1,
-        overflow: "auto",
-        fontFamily:
-          "'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace",
-        fontSize: 13,
-        lineHeight: `${LINE_HEIGHT}px`,
-        background: "#fafafa",
-        position: "relative",
-      }}
-    >
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+      {/* Search bar */}
+      {searchOpen && (
+        <JsonSearchBar
+          query={searchQuery}
+          caseSensitive={caseSensitive}
+          wholeWord={wholeWord}
+          useRegex={useRegex}
+          matchCount={searchResults.length}
+          currentIndex={currentMatchIndex}
+          onQueryChange={(q) => {
+            setSearchQuery(q);
+            doSearch(q);
+          }}
+          onToggleCase={() => {
+            const next = !caseSensitive;
+            setCaseSensitive(next);
+            doSearch(searchQuery, next);
+          }}
+          onToggleWholeWord={() => {
+            const next = !wholeWord;
+            setWholeWord(next);
+            doSearch(searchQuery, undefined, next);
+          }}
+          onToggleRegex={() => {
+            const next = !useRegex;
+            setUseRegex(next);
+            doSearch(searchQuery, undefined, undefined, next);
+          }}
+          onNext={goToNextMatch}
+          onPrev={goToPrevMatch}
+          onClose={closeSearch}
+        />
+      )}
+
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        onDoubleClick={handleDoubleClick}
+        style={{
+          flex: 1,
+          overflow: "auto",
+          fontFamily:
+            "'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace",
+          fontSize: 13,
+          lineHeight: `${LINE_HEIGHT}px`,
+          background: "#fafafa",
+          position: "relative",
+        }}
+      >
       <div style={{ height: totalHeight, position: "relative" }}>
         <div
           style={{
@@ -229,7 +429,11 @@ const JsonTreeView: React.FC = () => {
                 style={{
                   display: "flex",
                   minHeight: LINE_HEIGHT,
-                  background: isError ? "#fff2f0" : "transparent",
+                  background: isError
+                    ? "#fff2f0"
+                    : searchHitsByLine.has(line.line_number)
+                    ? "#fffbe6"
+                    : "transparent",
                   borderBottom: isError ? "1px solid #ffccc7" : "none",
                 }}
               >
@@ -298,7 +502,7 @@ const JsonTreeView: React.FC = () => {
                   ) : (
                     <>
                       <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                        {renderLineContent(line)}
+                        {renderLineContentWithSearch(line, searchHitsByLine.get(line.line_number))}
                       </span>
                       {line.is_editable && (
                         <EditOutlined
@@ -355,6 +559,22 @@ const JsonTreeView: React.FC = () => {
             }}
           />
         </div>
+      )}
+      </div>
+
+      {/* Search results panel */}
+      {resultsPanelOpen && searchResults.length > 0 && (
+        <JsonSearchResults
+          results={searchResults}
+          currentIndex={currentMatchIndex}
+          onSelect={(idx) => {
+            setCurrentMatchIndex(idx);
+            jumpToResult(searchResults[idx], searchResults);
+          }}
+          onClose={() => setResultsPanelOpen(false)}
+          panelHeight={resultsPanelHeight}
+          onHeightChange={setResultsPanelHeight}
+        />
       )}
     </div>
   );
@@ -419,6 +639,71 @@ function extractRawValue(line: VisibleLine): string {
   const colonIdx = line.content.indexOf(": ");
   if (colonIdx < 0) return line.content;
   return line.content.slice(colonIdx + 2);
+}
+
+function renderLineContentWithSearch(
+  line: VisibleLine,
+  searchHit?: { results: SearchResult[]; isCurrent: boolean }
+): React.ReactNode {
+  if (!searchHit || searchHit.results.length === 0) {
+    return renderLineContent(line);
+  }
+
+  const content = line.content;
+  const sorted = [...searchHit.results].sort((a, b) => a.match_start - b.match_start);
+
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+
+  for (const hit of sorted) {
+    if (hit.match_start < cursor) continue;
+    if (hit.match_start > cursor) {
+      parts.push(
+        <span key={`t-${cursor}`}>
+          {renderContentSpan(content.slice(cursor, hit.match_start), content, cursor)}
+        </span>
+      );
+    }
+    parts.push(
+      <span
+        key={`h-${hit.match_start}`}
+        style={{
+          background: searchHit.isCurrent ? "#f5a623" : "#ffe58f",
+          borderRadius: 2,
+        }}
+      >
+        {renderContentSpan(content.slice(hit.match_start, hit.match_end), content, hit.match_start)}
+      </span>
+    );
+    cursor = hit.match_end;
+  }
+
+  if (cursor < content.length) {
+    parts.push(
+      <span key={`t-${cursor}`}>
+        {renderContentSpan(content.slice(cursor), content, cursor)}
+      </span>
+    );
+  }
+
+  return <>{parts}</>;
+}
+
+function renderContentSpan(
+  text: string,
+  fullContent: string,
+  offset: number,
+): React.ReactNode {
+  const colonIdx = fullContent.indexOf(": ");
+
+  if (colonIdx >= 0 && offset < colonIdx) {
+    return <span style={{ color: "#a31515" }}>{text}</span>;
+  }
+  if (text.startsWith('"')) return <span style={{ color: "#0b8a0b" }}>{text}</span>;
+  if (text === "true" || text === "false") return <span style={{ color: "#0550ae" }}>{text}</span>;
+  if (text === "null") return <span style={{ color: "#8b949e" }}>{text}</span>;
+  if (/^[-]?\d/.test(text)) return <span style={{ color: "#098658" }}>{text}</span>;
+  return <span style={{ color: "#333" }}>{text}</span>;
 }
 
 export default JsonTreeView;
