@@ -162,15 +162,6 @@ export interface IconExportResult {
 
 // ==================== JSON ====================
 
-export interface JsonNode {
-  key: string | null;
-  value_type: "object" | "array" | "string" | "number" | "boolean" | "null";
-  value: string | null;
-  children: JsonNode[];
-  depth: number;
-  path: string;
-}
-
 export interface VisibleLine {
   line_number: number;
   content: string;
