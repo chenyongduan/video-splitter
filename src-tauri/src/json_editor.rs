@@ -182,6 +182,8 @@ pub struct JsonEditorState {
     pub total_visible_lines: u32,
     pub expand_json_strings: bool,
     pub file_path: Option<String>,
+    /// Cached: all lines in fully-expanded view, built once on file open/edit.
+    pub expanded_lines_cache: Vec<VisibleLine>,
 }
 
 impl Default for JsonEditorState {
@@ -195,6 +197,7 @@ impl Default for JsonEditorState {
             total_visible_lines: 0,
             expand_json_strings: true,
             file_path: None,
+            expanded_lines_cache: Vec::new(),
         }
     }
 }
@@ -1127,42 +1130,18 @@ pub fn json_search(
     }
 
     let s = state.lock().map_err(|e| format!("状态锁错误: {}", e))?;
-    let value = s.value.as_ref().ok_or("未加载 JSON 文件")?;
+    let _value = s.value.as_ref().ok_or("未加载 JSON 文件")?;
 
-    // Search in fully expanded view (empty collapse set)
-    let empty_collapsed = HashSet::new();
-    let expanded_total = compute_visible_total(&s.nodes, 0, &empty_collapsed);
-
-    let expanded_skip = SkipIndex::build(&s.nodes, 0, &empty_collapsed);
-
-    // Fetch ALL lines in expanded view (chunked)
-    let chunk_size: u32 = 1000;
-    let mut all_lines: Vec<VisibleLine> = Vec::with_capacity(expanded_total as usize);
-    let mut offset: u32 = 0;
-    while offset < expanded_total {
-        let (_, chunk) = get_visible_lines(
-            &s.nodes,
-            &s.key_table,
-            &empty_collapsed,
-            &expanded_skip,
-            expanded_total,
-            value,
-            s.expand_json_strings,
-            offset,
-            chunk_size,
-        );
-        let fetched = chunk.len() as u32;
-        all_lines.extend(chunk);
-        if fetched == 0 { break; }
-        offset += fetched;
-    }
+    // Use cached expanded lines instead of regenerating
+    let all_lines = &s.expanded_lines_cache;
+    let expanded_total = all_lines.len() as u32;
 
     // Build line mapping (expanded → visible) for current collapse state
     let line_mapping = build_line_mapping(&s.nodes, &s.collapsed_nodes, expanded_total);
 
     // Search each line
     let mut results = Vec::new();
-    for line in &all_lines {
+    for line in all_lines {
         let expanded_idx = (line.line_number - 1) as usize;
         let matches = find_matches(&line.content, &query, case_sensitive, whole_word, use_regex);
         for (start, end) in matches {
@@ -1199,6 +1178,34 @@ fn rebuild_index(s: &mut JsonEditorState) {
     s.collapsed_nodes.clear();
     s.total_visible_lines = compute_visible_total(&s.nodes, 0, &s.collapsed_nodes);
     s.skip_index = SkipIndex::build(&s.nodes, 0, &s.collapsed_nodes);
+    rebuild_expanded_cache(s);
+}
+
+/// Rebuild the expanded-lines cache (all lines in fully-expanded view).
+fn rebuild_expanded_cache(s: &mut JsonEditorState) {
+    let empty_collapsed = HashSet::new();
+    let expanded_total = compute_visible_total(&s.nodes, 0, &empty_collapsed);
+    let expanded_skip = SkipIndex::build(&s.nodes, 0, &empty_collapsed);
+
+    let value = match s.value.as_ref() {
+        Some(v) => v,
+        None => { s.expanded_lines_cache = Vec::new(); return; }
+    };
+
+    let chunk_size: u32 = 1000;
+    let mut all_lines: Vec<VisibleLine> = Vec::with_capacity(expanded_total as usize);
+    let mut offset: u32 = 0;
+    while offset < expanded_total {
+        let (_, chunk) = get_visible_lines(
+            &s.nodes, &s.key_table, &empty_collapsed, &expanded_skip,
+            expanded_total, value, s.expand_json_strings, offset, chunk_size,
+        );
+        let fetched = chunk.len() as u32;
+        all_lines.extend(chunk);
+        if fetched == 0 { break; }
+        offset += fetched;
+    }
+    s.expanded_lines_cache = all_lines;
 }
 
 // ---------------------------------------------------------------------------
@@ -1804,6 +1811,7 @@ pub fn json_open_file(path: String, state: State<'_, Mutex<JsonEditorState>>) ->
     s.total_visible_lines = total;
     s.expand_json_strings = expand;
     s.file_path = Some(path);
+    rebuild_expanded_cache(&mut s);
 
     Ok((total, first_page))
 }

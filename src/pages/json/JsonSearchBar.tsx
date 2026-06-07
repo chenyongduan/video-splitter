@@ -15,6 +15,7 @@ interface JsonSearchBarProps {
   matchCount: number;
   currentIndex: number;
   onQueryChange: (query: string) => void;
+  onSearch: () => void;
   onToggleCase: () => void;
   onToggleWholeWord: () => void;
   onToggleRegex: () => void;
@@ -31,6 +32,7 @@ const JsonSearchBar: React.FC<JsonSearchBarProps> = ({
   matchCount,
   currentIndex,
   onQueryChange,
+  onSearch,
   onToggleCase,
   onToggleWholeWord,
   onToggleRegex,
@@ -94,7 +96,8 @@ const JsonSearchBar: React.FC<JsonSearchBarProps> = ({
         size="small"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
-        placeholder="搜索..."
+        onPressEnter={onSearch}
+        placeholder="搜索... (回车搜索)"
         style={{ width: 200, fontSize: 13 }}
         prefix={<SearchOutlined style={{ color: "#999" }} />}
       />

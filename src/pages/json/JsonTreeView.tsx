@@ -373,22 +373,24 @@ const JsonTreeView: React.FC = () => {
           currentIndex={currentMatchIndex}
           onQueryChange={(q) => {
             setSearchQuery(q);
-            doSearch(q);
+          }}
+          onSearch={() => {
+            doSearch(searchQuery);
           }}
           onToggleCase={() => {
             const next = !caseSensitive;
             setCaseSensitive(next);
-            doSearch(searchQuery, next);
+            if (searchQuery) doSearch(searchQuery, next);
           }}
           onToggleWholeWord={() => {
             const next = !wholeWord;
             setWholeWord(next);
-            doSearch(searchQuery, undefined, next);
+            if (searchQuery) doSearch(searchQuery, undefined, next);
           }}
           onToggleRegex={() => {
             const next = !useRegex;
             setUseRegex(next);
-            doSearch(searchQuery, undefined, undefined, next);
+            if (searchQuery) doSearch(searchQuery, undefined, undefined, next);
           }}
           onNext={goToNextMatch}
           onPrev={goToPrevMatch}
