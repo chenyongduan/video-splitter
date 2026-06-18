@@ -9,7 +9,7 @@ import React, {
   useState,
 } from "react";
 import LogLine, { LINE_HEIGHT, LOG_FONT, LOG_FONT_SIZE } from "./LogLine";
-import type { LineMatcher } from "./highlight";
+import { buildMatcher, type LineMatcher } from "./highlight";
 import { tryParseTimestamp, formatTimestamp } from "../../utils/timestamp";
 
 const OVERSCAN = 3;
@@ -61,16 +61,28 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     } | null>(null);
     const tsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Dismiss tooltip when selection is cleared
+    // Selection highlight state: selected text is matched across all
+    // visible lines and highlighted with <mark>.
+    const [selectedText, setSelectedText] = useState("");
+
+    // Dismiss tooltip on deselect + track in-container selection for highlighting
     useEffect(() => {
       const onSelectionChange = () => {
         const sel = window.getSelection();
         if (!sel || sel.isCollapsed) {
           setTsTooltip(null);
+          setSelectedText("");
           if (tsTimerRef.current) {
             clearTimeout(tsTimerRef.current);
             tsTimerRef.current = null;
           }
+          return;
+        }
+        // Only highlight selection that originates inside the log content
+        const anchor = sel.anchorNode;
+        if (anchor && scrollRef.current?.contains(anchor)) {
+          const text = sel.toString();
+          if (text) setSelectedText(text);
         }
       };
       document.addEventListener("selectionchange", onSelectionChange);
@@ -186,6 +198,56 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       tsTimerRef.current = setTimeout(() => setTsTooltip(null), 5000);
     }, []);
 
+    // Clear selection highlight on Escape
+    useEffect(() => {
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setSelectedText("");
+      };
+      window.addEventListener("keydown", onKeyDown);
+      return () => window.removeEventListener("keydown", onKeyDown);
+    }, []);
+
+    // Build a matcher from the currently selected text (literal, case-sensitive)
+    const selectionMatcher: LineMatcher | null = useMemo(() => {
+      if (!selectedText) return null;
+      const res = buildMatcher({
+        query: selectedText,
+        caseSensitive: true,
+        wholeWord: false,
+        useRegex: false,
+      });
+      return res.ok ? res.matcher : null;
+    }, [selectedText]);
+
+    // When search opens (matcher prop becomes non-null), clear selection highlight
+    // so the two highlight systems don't visually conflict.
+    useEffect(() => {
+      if (matcher) setSelectedText("");
+    }, [matcher]);
+
+    // Combine search matcher and selection matcher into one.
+    // Search takes precedence (opens the search bar → selection highlight suppressed).
+    const effectiveMatcher: LineMatcher | null = useMemo(() => {
+      if (matcher && !selectionMatcher) return matcher;
+      if (!matcher && selectionMatcher) return selectionMatcher;
+      if (matcher && selectionMatcher) {
+        return (line: string) => {
+          const r1 = matcher(line);
+          const r2 = selectionMatcher(line);
+          if (r1.length === 0) return r2;
+          if (r2.length === 0) return r1;
+          const merged = [...r1];
+          for (const r of r2) {
+            if (!merged.some((m) => r.start < m.end && r.end > m.start)) {
+              merged.push(r);
+            }
+          }
+          return merged.sort((a, b) => a.start - b.start);
+        };
+      }
+      return null;
+    }, [matcher, selectionMatcher]);
+
     const rows: React.ReactNode[] = [];
     for (let i = startIndex; i < endIndex; i++) {
       rows.push(
@@ -193,7 +255,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
           key={i}
           line={lines[i]}
           lineNumber={i + 1}
-          matcher={matcher}
+          matcher={effectiveMatcher}
           lineNumberWidth={geo.lineNumberWidth}
           isCurrent={currentLine === i}
           top={geo.prefixSum[i]}
