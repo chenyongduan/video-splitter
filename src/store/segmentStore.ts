@@ -135,12 +135,19 @@ interface AppState {
   jsonValidationError: JsonValidationResult | null;
   jsonExpandStrings: boolean;
 
+  // Log state
+  logText: string;
+
   // JSON actions
   setJsonFile: (path: string, fileName: string, totalLines: number, firstPage: VisibleLine[]) => void;
   clearJson: () => void;
   setJsonLines: (totalLines: number, fetchedLines: VisibleLine[], fetchStart: number) => void;
   setJsonValidationError: (result: JsonValidationResult | null) => void;
   setJsonExpandStrings: (val: boolean) => void;
+
+  // Log actions
+  setLogText: (text: string) => void;
+  clearLog: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -432,5 +439,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setJsonExpandStrings: (val) => {
     set({ jsonExpandStrings: val });
+  },
+
+  // Log
+  logText: "",
+
+  setLogText: (text) => {
+    set({ logText: text });
+  },
+
+  clearLog: () => {
+    set({ logText: "" });
   },
 }));

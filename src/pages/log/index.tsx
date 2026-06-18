@@ -9,26 +9,29 @@ import SearchBar from "../../components/SearchBar";
 import LogViewer, { type LogViewerHandle } from "./LogViewer";
 import LogErrorBoundary from "./LogErrorBoundary";
 import { useLogSearch } from "./useLogSearch";
+import { useAppStore } from "../../store/segmentStore";
 
 const LogPage: React.FC = () => {
   const [inputText, setInputText] = useState("");
-  const [text, setText] = useState("");
+  const logText = useAppStore((s) => s.logText);
+  const setLogText = useAppStore((s) => s.setLogText);
+  const clearLog = useAppStore((s) => s.clearLog);
 
   const lines = useMemo(
-    () => (text.length ? text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n") : []),
-    [text]
+    () => (logText.length ? logText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n") : []),
+    [logText]
   );
   const search = useLogSearch(lines);
   const viewerRef = useRef<LogViewerHandle>(null);
 
-  const loaded = text.length > 0;
+  const loaded = logText.length > 0;
 
   const loadText = useCallback(
     (content: string) => {
-      setText(content);
+      setLogText(content);
       search.reset();
     },
-    [search]
+    [search, setLogText]
   );
 
   const openLogFile = useCallback(
@@ -74,7 +77,7 @@ const LogPage: React.FC = () => {
   };
 
   const handleClear = () => {
-    setText("");
+    clearLog();
     setInputText("");
     search.reset();
   };
