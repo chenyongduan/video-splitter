@@ -66,7 +66,7 @@ export function highlightSegments(
   line: string,
   matcher: LineMatcher | null
 ): TextSegment[] {
-  if (!matcher) {
+  if (!matcher || typeof matcher !== "function") {
     return [{ text: line.length ? line : " ", match: false }];
   }
   const ranges = matcher(line);
