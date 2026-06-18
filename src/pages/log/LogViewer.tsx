@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import LogLine, { LINE_HEIGHT, LOG_FONT, LOG_FONT_SIZE } from "./LogLine";
+import LogLine, { LINE_HEIGHT, LOG_FONT, LOG_FONT_SIZE, type RestoreSelection } from "./LogLine";
 import { buildMatcher, type LineMatcher } from "./highlight";
 import { tryParseTimestamp, formatTimestamp } from "../../utils/timestamp";
 
@@ -62,19 +62,26 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     const tsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Selection highlight state: selected text is matched across all
-    // visible lines and highlighted with <mark>.
-    const [selectedText, setSelectedText] = useState("");
+    // visible lines and highlighted with <mark>. selInfo also records
+    // the exact (line, offset, length) of the browser selection so it
+    // can be restored after React re-renders the DOM nodes.
+    const [selInfo, setSelInfo] = useState<{
+      text: string;
+      line: number;
+      startOffset: number;
+      length: number;
+    } | null>(null);
 
     // Dismiss tooltip and clear selection highlight on deselect.
-    // We deliberately do NOT call setSelectedText() here — doing so during
-    // an active drag causes a re-render that rewrites DOM nodes, which
+    // We deliberately do NOT set selInfo here — doing so during an
+    // active drag causes a re-render that rewrites DOM nodes, which
     // resets the browser's selection anchor to the start of the line.
     useEffect(() => {
       const onSelectionChange = () => {
         const sel = window.getSelection();
         if (!sel || sel.isCollapsed) {
           setTsTooltip(null);
-          setSelectedText("");
+          setSelInfo(null);
           if (tsTimerRef.current) {
             clearTimeout(tsTimerRef.current);
             tsTimerRef.current = null;
@@ -85,18 +92,45 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       return () => document.removeEventListener("selectionchange", onSelectionChange);
     }, []);
 
-    // Capture the selected text on mouseup — i.e. only after the drag
-    // completes. This avoids re-rendering (and rewriting DOM nodes) while
-    // the user is still dragging, which would break the selection anchor.
+    // Capture the selected text + exact (line, offset, length) on mouseup —
+    // i.e. only after the drag completes. This avoids re-rendering (and
+    // rewriting DOM nodes) while the user is still dragging, which would
+    // break the selection anchor.
     useEffect(() => {
       const onMouseUp = () => {
         const sel = window.getSelection();
-        if (!sel || sel.isCollapsed) return;
+        if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
         const anchor = sel.anchorNode;
-        if (anchor && scrollRef.current?.contains(anchor)) {
-          const text = sel.toString();
-          if (text) setSelectedText(text);
+        if (!anchor || !scrollRef.current?.contains(anchor)) return;
+
+        const text = sel.toString();
+        if (!text) return;
+
+        // Walk text nodes from the content container to find the char
+        // offset of the anchor within the line. This lets us restore
+        // the selection after React re-renders the DOM.
+        const lineEl = (anchor as Element).closest?.('[data-line-idx]')
+          ?? (anchor.parentElement?.closest('[data-line-idx]'));
+        if (!lineEl) return;
+        const lineIdx = Number(lineEl.getAttribute("data-line-idx"));
+        if (!Number.isFinite(lineIdx)) return;
+
+        const contentEl = lineEl.querySelector("[data-content]");
+        if (!contentEl) return;
+
+        const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT);
+        let offset = 0;
+        let startOffset = 0;
+        let node: Node | null;
+        while ((node = walker.nextNode())) {
+          if (node === sel.anchorNode) {
+            startOffset = offset + (sel.anchorOffset ?? 0);
+            break;
+          }
+          offset += (node.textContent ?? "").length;
         }
+
+        setSelInfo({ text, line: lineIdx, startOffset, length: text.length });
       };
       document.addEventListener("mouseup", onMouseUp);
       return () => document.removeEventListener("mouseup", onMouseUp);
@@ -214,7 +248,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     // Clear selection highlight on Escape
     useEffect(() => {
       const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") setSelectedText("");
+        if (e.key === "Escape") setSelInfo(null);
       };
       window.addEventListener("keydown", onKeyDown);
       return () => window.removeEventListener("keydown", onKeyDown);
@@ -222,20 +256,20 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
 
     // Build a matcher from the currently selected text (literal, case-sensitive)
     const selectionMatcher: LineMatcher | null = useMemo(() => {
-      if (!selectedText) return null;
+      if (!selInfo?.text) return null;
       const res = buildMatcher({
-        query: selectedText,
+        query: selInfo.text,
         caseSensitive: true,
         wholeWord: false,
         useRegex: false,
       });
       return res.ok ? res.matcher : null;
-    }, [selectedText]);
+    }, [selInfo]);
 
     // When search opens (matcher prop becomes non-null), clear selection highlight
     // so the two highlight systems don't visually conflict.
     useEffect(() => {
-      if (matcher) setSelectedText("");
+      if (matcher) setSelInfo(null);
     }, [matcher]);
 
     // Combine search matcher and selection matcher into one.
@@ -263,16 +297,22 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
 
     const rows: React.ReactNode[] = [];
     for (let i = startIndex; i < endIndex; i++) {
+      const restore: RestoreSelection | null =
+        selInfo && selInfo.line === i
+          ? { startOffset: selInfo.startOffset, length: selInfo.length }
+          : null;
       rows.push(
         <LogLine
           key={i}
           line={lines[i]}
           lineNumber={i + 1}
+          lineIndex={i}
           matcher={effectiveMatcher}
           lineNumberWidth={geo.lineNumberWidth}
           isCurrent={currentLine === i}
           top={geo.prefixSum[i]}
           height={geo.prefixSum[i + 1] - geo.prefixSum[i]}
+          restoreSelection={restore}
         />
       );
     }
