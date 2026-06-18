@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from "react";
 import { Input, message } from "antd";
 import {
   CaretRightOutlined,
@@ -11,6 +11,7 @@ import { tryParseTimestamp, formatTimestamp } from "../../utils/timestamp";
 import type { VisibleLine, SearchResult } from "../../types";
 import SearchBar from "../../components/SearchBar";
 import JsonSearchResults from "./JsonSearchResults";
+import { buildMatcher } from "../log/highlight";
 
 const LINE_HEIGHT = 22;
 const BUFFER = 30;
@@ -57,6 +58,7 @@ const JsonTreeView: React.FC = () => {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed) {
         setTsTooltip(null);
+        setSelectedText("");
         if (tsTimerRef.current) {
           clearTimeout(tsTimerRef.current);
           tsTimerRef.current = null;
@@ -66,6 +68,136 @@ const JsonTreeView: React.FC = () => {
     document.addEventListener("selectionchange", onSelectionChange);
     return () => document.removeEventListener("selectionchange", onSelectionChange);
   }, []);
+
+  // Selection highlight state: selected text is matched across all
+  // visible (fetched) lines and highlighted alongside search hits.
+  const [selectedText, setSelectedText] = useState("");
+
+  // Restore the browser selection after re-render (same technique as LogLine).
+  const [restoreSel, setRestoreSel] = useState<{
+    lineNumber: number;
+    startOffset: number;
+    length: number;
+  } | null>(null);
+  const lineContentRefs = useRef<Map<number, HTMLElement>>(new Map());
+
+  // Capture selected text + position on mouseup (after drag completes)
+  useEffect(() => {
+    const onMouseUp = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+      const anchor = sel.anchorNode;
+      if (!anchor || !containerRef.current?.contains(anchor)) return;
+
+      const text = sel.toString();
+      if (!text) return;
+
+      const lineEl = (anchor as Element).closest?.("[data-line-number]")
+        ?? anchor.parentElement?.closest("[data-line-number]");
+      if (!lineEl) return;
+      const lineNumber = Number(lineEl.getAttribute("data-line-number"));
+      if (!Number.isFinite(lineNumber)) return;
+
+      const contentEl = lineEl.querySelector("[data-line-content]") as HTMLElement | null;
+      if (!contentEl) return;
+
+      const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT);
+      let offset = 0;
+      let startOffset = 0;
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        if (node === sel.anchorNode) {
+          startOffset = offset + (sel.anchorOffset ?? 0);
+          break;
+        }
+        offset += (node.textContent ?? "").length;
+      }
+
+      setSelectedText(text);
+      setRestoreSel({ lineNumber, startOffset, length: text.length });
+    };
+    document.addEventListener("mouseup", onMouseUp);
+    return () => document.removeEventListener("mouseup", onMouseUp);
+  }, []);
+
+  // Restore browser selection after React re-renders the DOM.
+  useLayoutEffect(() => {
+    if (!restoreSel) return;
+    const contentEl = lineContentRefs.current.get(restoreSel.lineNumber);
+    if (!contentEl) return;
+
+    const { startOffset, length } = restoreSel;
+    const endOffset = startOffset + length;
+
+    const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT);
+    let pos = 0;
+    let startNode: Node | null = null;
+    let startNodeOffset = 0;
+    let endNode: Node | null = null;
+    let endNodeOffset = 0;
+
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const nodeLen = (node.textContent ?? "").length;
+      if (!startNode && pos + nodeLen >= startOffset) {
+        startNode = node;
+        startNodeOffset = startOffset - pos;
+      }
+      if (!endNode && pos + nodeLen >= endOffset) {
+        endNode = node;
+        endNodeOffset = endOffset - pos;
+        break;
+      }
+      pos += nodeLen;
+    }
+
+    if (startNode && endNode) {
+      try {
+        const range = document.createRange();
+        range.setStart(startNode, startNodeOffset);
+        range.setEnd(endNode, endNodeOffset);
+        const selObj = window.getSelection();
+        selObj?.removeAllRanges();
+        selObj?.addRange(range);
+      } catch {
+        // Silently ignore invalid ranges
+      }
+    }
+  }, [restoreSel, selectedText]);
+
+  // Clear selection highlight on Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedText("");
+        setRestoreSel(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Build a map of selection hits per line (only in fetched lines)
+  const selectionHitsByLine = useMemo(() => {
+    const map = new Map<number, Array<{ start: number; end: number }>>();
+    if (!selectedText) return map;
+
+    const res = buildMatcher({
+      query: selectedText,
+      caseSensitive: true,
+      wholeWord: false,
+      useRegex: false,
+    });
+    if (!res.ok) return map;
+
+    for (const line of jsonFetchedLines) {
+      const ranges = res.matcher(line.content);
+      if (ranges.length > 0) {
+        map.set(line.line_number, ranges);
+      }
+    }
+    return map;
+  }, [selectedText, jsonFetchedLines]);
 
   // Virtual scroll: which lines are in the viewport
   const viewStart = Math.floor(scrollTop / LINE_HEIGHT);
@@ -196,6 +328,7 @@ const JsonTreeView: React.FC = () => {
         e.preventDefault();
         if (!isJsonLoaded) return;
         setSearchOpen(true);
+        setSelectedText("");
         return;
       }
       if (mod && e.key === "d" && searchOpen) {
@@ -399,15 +532,20 @@ const JsonTreeView: React.FC = () => {
           {visibleSlice.map((line) => {
             const isError =
               errorLine !== null && line.line_number === errorLine;
+            const hasSearchHit = searchHitsByLine.has(line.line_number);
+            const hasSelHit = selectionHitsByLine.has(line.line_number);
             return (
               <div
                 key={line.line_number}
+                data-line-number={line.line_number}
                 style={{
                   display: "flex",
                   minHeight: LINE_HEIGHT,
                   background: isError
                     ? "#fff2f0"
-                    : searchHitsByLine.has(line.line_number)
+                    : hasSearchHit
+                    ? "#fffbe6"
+                    : hasSelHit
                     ? "#fffbe6"
                     : "transparent",
                   borderBottom: isError ? "1px solid #ffccc7" : "none",
@@ -477,8 +615,19 @@ const JsonTreeView: React.FC = () => {
                     </span>
                   ) : (
                     <>
-                      <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                        {renderLineContentWithSearch(line, searchHitsByLine.get(line.line_number))}
+                      <span
+                        data-line-content="1"
+                        ref={(el) => {
+                          if (el) lineContentRefs.current.set(line.line_number, el);
+                          else lineContentRefs.current.delete(line.line_number);
+                        }}
+                        style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
+                      >
+                        {renderLineContentWithSearch(
+                          line,
+                          searchHitsByLine.get(line.line_number),
+                          selectionHitsByLine.get(line.line_number)
+                        )}
                       </span>
                       {line.is_editable && (
                         <EditOutlined
@@ -604,39 +753,71 @@ function extractRawValue(line: VisibleLine): string {
 
 function renderLineContentWithSearch(
   line: VisibleLine,
-  searchHit?: { results: SearchResult[]; isCurrent: boolean }
+  searchHit?: { results: SearchResult[]; isCurrent: boolean },
+  selectionHits?: Array<{ start: number; end: number }>
 ): React.ReactNode {
-  if (!searchHit || searchHit.results.length === 0) {
+  const hasSearch = searchHit && searchHit.results.length > 0;
+  const hasSelection = selectionHits && selectionHits.length > 0;
+
+  if (!hasSearch && !hasSelection) {
     return renderLineContent(line);
   }
 
   const content = line.content;
-  const sorted = [...searchHit.results].sort((a, b) => a.match_start - b.match_start);
+
+  // Collect all highlights, search takes priority over selection
+  const highlights: Array<{
+    start: number;
+    end: number;
+    type: "current" | "search" | "selection";
+  }> = [];
+
+  if (hasSearch) {
+    for (const r of searchHit!.results) {
+      highlights.push({
+        start: r.match_start,
+        end: r.match_end,
+        type: searchHit!.isCurrent ? "current" : "search",
+      });
+    }
+  }
+
+  if (hasSelection) {
+    for (const r of selectionHits!) {
+      const overlaps = highlights.some((h) => r.start < h.end && r.end > h.start);
+      if (!overlaps) {
+        highlights.push({ start: r.start, end: r.end, type: "selection" });
+      }
+    }
+  }
+
+  highlights.sort((a, b) => a.start - b.start);
 
   const parts: React.ReactNode[] = [];
   let cursor = 0;
 
-  for (const hit of sorted) {
-    if (hit.match_start < cursor) continue;
-    if (hit.match_start > cursor) {
+  for (const h of highlights) {
+    if (h.start < cursor) continue;
+    if (h.start > cursor) {
       parts.push(
         <span key={`t-${cursor}`}>
-          {renderContentSpan(content.slice(cursor, hit.match_start), content, cursor)}
+          {renderContentSpan(content.slice(cursor, h.start), content, cursor)}
         </span>
       );
     }
+    const bg =
+      h.type === "current" ? "#f5a623"
+      : h.type === "search" ? "#ffe58f"
+      : "#bae0ff";
     parts.push(
       <span
-        key={`h-${hit.match_start}`}
-        style={{
-          background: searchHit.isCurrent ? "#f5a623" : "#ffe58f",
-          borderRadius: 2,
-        }}
+        key={`h-${h.start}`}
+        style={{ background: bg, borderRadius: 2 }}
       >
-        {renderContentSpan(content.slice(hit.match_start, hit.match_end), content, hit.match_start)}
+        {renderContentSpan(content.slice(h.start, h.end), content, h.start)}
       </span>
     );
-    cursor = hit.match_end;
+    cursor = h.end;
   }
 
   if (cursor < content.length) {
