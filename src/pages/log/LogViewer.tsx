@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import LogLine, { LINE_HEIGHT, LOG_FONT, LOG_FONT_SIZE } from "./LogLine";
 import type { LineMatcher } from "./highlight";
+import { tryParseTimestamp, formatTimestamp } from "../../utils/timestamp";
 
 const OVERSCAN = 3;
 const RIGHT_PADDING = 16;
@@ -50,6 +51,14 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     const [scrollTop, setScrollTop] = useState(0);
     const [containerWidth, setContainerWidth] = useState(0);
     const [containerHeight, setContainerHeight] = useState(0);
+
+    // Timestamp tooltip state
+    const [tsTooltip, setTsTooltip] = useState<{
+      text: string;
+      left: number;
+      top: number;
+    } | null>(null);
+    const tsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const charWidth = useMemo(() => measureCharWidth(), []);
 
@@ -137,6 +146,29 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       if (currentLine != null) scrollToLine(currentLine);
     }, [currentLine, scrollToLine]);
 
+    const handleDoubleClick = useCallback(() => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+
+      const selected = selection.toString().trim();
+      const date = tryParseTimestamp(selected);
+      if (!date) return;
+
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const containerRect = scrollRef.current?.getBoundingClientRect();
+      if (!containerRect) return;
+
+      setTsTooltip({
+        text: formatTimestamp(date),
+        left: rect.left + rect.width / 2 - containerRect.left,
+        top: rect.top - containerRect.top - 40 + (scrollRef.current?.scrollTop ?? 0),
+      });
+
+      if (tsTimerRef.current) clearTimeout(tsTimerRef.current);
+      tsTimerRef.current = setTimeout(() => setTsTooltip(null), 5000);
+    }, []);
+
     const rows: React.ReactNode[] = [];
     for (let i = startIndex; i < endIndex; i++) {
       rows.push(
@@ -157,6 +189,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       <div
         ref={scrollRef}
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+        onDoubleClick={handleDoubleClick}
         style={{
           flex: 1,
           position: "relative",
@@ -170,6 +203,27 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
         <div style={{ position: "relative", height: geo.totalHeight }}>
           {rows}
         </div>
+        {tsTooltip && (
+          <div
+            style={{
+              position: "absolute",
+              left: tsTooltip.left,
+              top: tsTooltip.top,
+              transform: "translateX(-50%)",
+              background: "#333",
+              color: "#fff",
+              padding: "4px 10px",
+              borderRadius: 4,
+              fontSize: 13,
+              fontFamily: "'Cascadia Code', Consolas, monospace",
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+              zIndex: 100,
+            }}
+          >
+            {tsTooltip.text}
+          </div>
+        )}
       </div>
     );
   }

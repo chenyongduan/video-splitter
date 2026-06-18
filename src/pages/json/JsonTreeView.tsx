@@ -7,6 +7,7 @@ import {
 } from "@ant-design/icons";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppStore } from "../../store/segmentStore";
+import { tryParseTimestamp, formatTimestamp } from "../../utils/timestamp";
 import type { VisibleLine, SearchResult } from "../../types";
 import JsonSearchBar from "./JsonSearchBar";
 import JsonSearchResults from "./JsonSearchResults";
@@ -538,21 +539,6 @@ const JsonTreeView: React.FC = () => {
     </div>
   );
 };
-
-function tryParseTimestamp(text: string): Date | null {
-  const cleaned = text.replace(/["',]/g, "").trim();
-  const num = Number(cleaned);
-  if (!Number.isFinite(num) || cleaned.length === 0) return null;
-  if (cleaned.length === 13 && num >= 1e12 && num < 1e14) return new Date(num);
-  if (cleaned.length >= 9 && cleaned.length <= 10 && num >= 1e9 && num < 1e10)
-    return new Date(num * 1000);
-  return null;
-}
-
-function formatTimestamp(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
 
 function renderLineContent(line: VisibleLine): React.ReactNode {
   const colonIdx = line.content.indexOf(": ");
