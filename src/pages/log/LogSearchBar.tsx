@@ -95,7 +95,7 @@ const LogSearchBar: React.FC<LogSearchBarProps> = ({
         onChange={(e) => onQueryChange(e.target.value)}
         onPressEnter={onSearch}
         placeholder="搜索... (回车搜索)"
-        style={{ width: 200, fontSize: 13 }}
+        style={{ width: 200, fontSize: 13, height: 28 }}
         prefix={<SearchOutlined style={{ color: "#999" }} />}
       />
       <Space size={2}>
