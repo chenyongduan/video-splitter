@@ -5,7 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import LogToolbar from "./LogToolbar";
-import LogSearchBar from "./LogSearchBar";
+import SearchBar from "../../components/SearchBar";
 import LogViewer, { type LogViewerHandle } from "./LogViewer";
 import LogErrorBoundary from "./LogErrorBoundary";
 import { useLogSearch } from "./useLogSearch";
@@ -151,7 +151,7 @@ const LogPage: React.FC = () => {
           }}
         >
           {search.showSearch && (
-            <LogSearchBar
+            <SearchBar
               query={search.query}
               caseSensitive={search.caseSensitive}
               wholeWord={search.wholeWord}

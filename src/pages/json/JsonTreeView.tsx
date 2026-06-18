@@ -9,7 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useAppStore } from "../../store/segmentStore";
 import { tryParseTimestamp, formatTimestamp } from "../../utils/timestamp";
 import type { VisibleLine, SearchResult } from "../../types";
-import JsonSearchBar from "./JsonSearchBar";
+import SearchBar from "../../components/SearchBar";
 import JsonSearchResults from "./JsonSearchResults";
 
 const LINE_HEIGHT = 22;
@@ -338,7 +338,7 @@ const JsonTreeView: React.FC = () => {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       {/* Search bar */}
       {searchOpen && (
-        <JsonSearchBar
+        <SearchBar
           query={searchQuery}
           caseSensitive={caseSensitive}
           wholeWord={wholeWord}

@@ -7,7 +7,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 
-interface LogSearchBarProps {
+export interface SearchBarProps {
   query: string;
   caseSensitive: boolean;
   wholeWord: boolean;
@@ -22,9 +22,10 @@ interface LogSearchBarProps {
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
+  placeholder?: string;
 }
 
-const LogSearchBar: React.FC<LogSearchBarProps> = ({
+const SearchBar: React.FC<SearchBarProps> = ({
   query,
   caseSensitive,
   wholeWord,
@@ -39,6 +40,7 @@ const LogSearchBar: React.FC<LogSearchBarProps> = ({
   onNext,
   onPrev,
   onClose,
+  placeholder = "搜索... (回车搜索)",
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -94,7 +96,7 @@ const LogSearchBar: React.FC<LogSearchBarProps> = ({
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         onPressEnter={onSearch}
-        placeholder="搜索... (回车搜索)"
+        placeholder={placeholder}
         style={{ width: 200, fontSize: 13, height: 28 }}
         prefix={<SearchOutlined style={{ color: "#999" }} />}
       />
@@ -151,4 +153,4 @@ const LogSearchBar: React.FC<LogSearchBarProps> = ({
   );
 };
 
-export default LogSearchBar;
+export default SearchBar;
