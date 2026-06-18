@@ -7,6 +7,7 @@ import { readTextFile } from "@tauri-apps/plugin-fs";
 import LogToolbar from "./LogToolbar";
 import LogSearchBar from "./LogSearchBar";
 import LogViewer, { type LogViewerHandle } from "./LogViewer";
+import LogErrorBoundary from "./LogErrorBoundary";
 import { useLogSearch } from "./useLogSearch";
 
 const LogPage: React.FC = () => {
@@ -79,8 +80,12 @@ const LogPage: React.FC = () => {
   };
 
   const handleSearch = () => {
-    const err = search.runSearch();
-    if (err) message.error(err);
+    try {
+      const err = search.runSearch();
+      if (err) message.error(err);
+    } catch (e) {
+      message.error(`搜索出错: ${e}`);
+    }
   };
 
   if (!loaded) {
@@ -135,40 +140,42 @@ const LogPage: React.FC = () => {
         onClear={handleClear}
         onOpenFile={handleOpenFile}
       />
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          position: "relative",
-        }}
-      >
-        {search.showSearch && (
-          <LogSearchBar
-            query={search.query}
-            caseSensitive={search.caseSensitive}
-            wholeWord={search.wholeWord}
-            useRegex={search.useRegex}
-            matchCount={search.matchLineIndices.length}
-            currentIndex={search.currentIndex}
-            onQueryChange={search.setQuery}
-            onSearch={handleSearch}
-            onToggleCase={search.toggleCase}
-            onToggleWholeWord={search.toggleWholeWord}
-            onToggleRegex={search.toggleRegex}
-            onNext={search.next}
-            onPrev={search.prev}
-            onClose={search.closeSearch}
+      <LogErrorBoundary>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          {search.showSearch && (
+            <LogSearchBar
+              query={search.query}
+              caseSensitive={search.caseSensitive}
+              wholeWord={search.wholeWord}
+              useRegex={search.useRegex}
+              matchCount={search.matchLineIndices.length}
+              currentIndex={search.currentIndex}
+              onQueryChange={search.setQuery}
+              onSearch={handleSearch}
+              onToggleCase={search.toggleCase}
+              onToggleWholeWord={search.toggleWholeWord}
+              onToggleRegex={search.toggleRegex}
+              onNext={search.next}
+              onPrev={search.prev}
+              onClose={search.closeSearch}
+            />
+          )}
+          <LogViewer
+            ref={viewerRef}
+            lines={lines}
+            matcher={search.activeMatcher}
+            currentLine={search.currentLine}
           />
-        )}
-        <LogViewer
-          ref={viewerRef}
-          lines={lines}
-          matcher={search.activeMatcher}
-          currentLine={search.currentLine}
-        />
-      </div>
+        </div>
+      </LogErrorBoundary>
     </div>
   );
 };
