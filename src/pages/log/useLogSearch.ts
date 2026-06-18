@@ -24,7 +24,7 @@ export function useLogSearch(lines: string[]) {
     for (let i = 0; i < lines.length; i++) {
       if (res.matcher(lines[i]).length > 0) idx.push(i);
     }
-    setActiveMatcher(res.matcher);
+    setActiveMatcher(() => res.matcher);
     setMatchLineIndices(idx);
     setCurrentIndex(idx.length > 0 ? 0 : -1);
     return null;
