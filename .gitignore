@@ -31,3 +31,4 @@ src-tauri/binaries/
 *.dmg
 *.msi
 *.exe
+.codegraph/
