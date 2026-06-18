@@ -38,9 +38,11 @@ const LogToolbar: React.FC<LogToolbarProps> = ({
         <Tooltip title="选择文件">
           <Button icon={<FolderOpenOutlined />} onClick={onOpenFile} />
         </Tooltip>
-        <Button icon={<SearchOutlined />} onClick={onOpenSearch}>
-          搜索
-        </Button>
+        <Tooltip title="搜索 (Ctrl/Cmd+F)">
+          <Button icon={<SearchOutlined />} onClick={onOpenSearch}>
+            搜索
+          </Button>
+        </Tooltip>
         <Button icon={<DeleteOutlined />} danger onClick={onClear}>
           清空
         </Button>

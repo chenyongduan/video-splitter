@@ -91,6 +91,36 @@ const LogPage: React.FC = () => {
     }
   };
 
+  // Keyboard shortcuts (only active once a log is loaded):
+  //   Ctrl/Cmd+F        open search
+  //   Ctrl/Cmd+G        next match        Shift+Ctrl/Cmd+G  previous match
+  //   Escape            close search
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!loaded) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        search.openSearch();
+        return;
+      }
+      if (mod && (e.key === "g" || e.key === "G")) {
+        if (!search.showSearch) return;
+        e.preventDefault();
+        if (e.shiftKey) search.prev();
+        else search.next();
+        return;
+      }
+      if (e.key === "Escape" && search.showSearch) {
+        e.preventDefault();
+        search.closeSearch();
+        return;
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [search, loaded]);
+
   if (!loaded) {
     return (
       <div

@@ -72,6 +72,11 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       length: number;
     } | null>(null);
 
+    // Cursor into selectionMatchLines, advanced by Ctrl/Cmd+D. Starts at the
+    // line where the selection was made, so the first press jumps to the next
+    // occurrence and wraps around at the end.
+    const [selMatchCursor, setSelMatchCursor] = useState(-1);
+
     // Dismiss tooltip and clear selection highlight on deselect.
     // We deliberately do NOT set selInfo here — doing so during an
     // active drag causes a re-render that rewrites DOM nodes, which
@@ -266,6 +271,45 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       return res.ok ? res.matcher : null;
     }, [selInfo]);
 
+    // All line indices that contain the selected text (literal, case-
+    // sensitive), used by Ctrl/Cmd+D to cycle through occurrences.
+    const selectionMatchLines = useMemo(() => {
+      if (!selInfo?.text) return [] as number[];
+      const idx: number[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes(selInfo.text)) idx.push(i);
+      }
+      return idx;
+    }, [lines, selInfo]);
+
+    // Position the cursor at the line where the selection was made.
+    useEffect(() => {
+      if (!selInfo) {
+        setSelMatchCursor(-1);
+        return;
+      }
+      const pos = selectionMatchLines.indexOf(selInfo.line);
+      setSelMatchCursor(pos >= 0 ? pos : 0);
+    }, [selInfo, selectionMatchLines]);
+
+    // Ctrl/Cmd+D: cycle to the next occurrence of the selected text and
+    // scroll to that line. Wraps around at the end of the matches.
+    useEffect(() => {
+      const onKeyDown = (e: KeyboardEvent) => {
+        const mod = e.metaKey || e.ctrlKey;
+        if (!mod || e.key !== "d" || e.shiftKey) return;
+        if (selectionMatchLines.length === 0) return;
+        e.preventDefault();
+        setSelMatchCursor((c) => {
+          const next = c + 1 >= selectionMatchLines.length ? 0 : c + 1;
+          scrollToLine(selectionMatchLines[next]);
+          return next;
+        });
+      };
+      window.addEventListener("keydown", onKeyDown);
+      return () => window.removeEventListener("keydown", onKeyDown);
+    }, [selectionMatchLines, scrollToLine]);
+
     // When search opens (matcher prop becomes non-null), clear selection highlight
     // so the two highlight systems don't visually conflict.
     useEffect(() => {
@@ -296,6 +340,10 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     }, [matcher, selectionMatcher]);
 
     const rows: React.ReactNode[] = [];
+    const selCursorLine =
+      selMatchCursor >= 0 && selMatchCursor < selectionMatchLines.length
+        ? selectionMatchLines[selMatchCursor]
+        : -1;
     for (let i = startIndex; i < endIndex; i++) {
       const restore: RestoreSelection | null =
         selInfo && selInfo.line === i
@@ -309,7 +357,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
           lineIndex={i}
           matcher={effectiveMatcher}
           lineNumberWidth={geo.lineNumberWidth}
-          isCurrent={currentLine === i}
+          isCurrent={currentLine === i || selCursorLine === i}
           top={geo.prefixSum[i]}
           height={geo.prefixSum[i + 1] - geo.prefixSum[i]}
           restoreSelection={restore}
