@@ -1,5 +1,9 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, message } from "antd";
+import { FolderOpenOutlined } from "@ant-design/icons";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open } from "@tauri-apps/plugin-dialog";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import LogToolbar from "./LogToolbar";
 import LogSearchBar from "./LogSearchBar";
 import LogViewer, { type LogViewerHandle } from "./LogViewer";
@@ -18,10 +22,54 @@ const LogPage: React.FC = () => {
 
   const loaded = text.length > 0;
 
+  const loadText = useCallback(
+    (content: string) => {
+      setText(content);
+      search.reset();
+    },
+    [search]
+  );
+
+  const openLogFile = useCallback(
+    async (path: string) => {
+      try {
+        const content = await readTextFile(path);
+        if (content.length === 0) {
+          message.warning("文件为空");
+          return;
+        }
+        loadText(content);
+      } catch (e) {
+        message.error(`打开文件失败: ${e}`);
+      }
+    },
+    [loadText]
+  );
+
+  const handleOpenFile = useCallback(async () => {
+    try {
+      const selected = await open({ multiple: false });
+      if (!selected) return;
+      await openLogFile(selected as string);
+    } catch (e) {
+      message.error(`打开文件失败: ${e}`);
+    }
+  }, [openLogFile]);
+
+  useEffect(() => {
+    const unlisten = getCurrentWindow().onDragDropEvent((event) => {
+      if (event.payload.type === "drop") {
+        const paths = event.payload.paths;
+        if (paths.length > 0) openLogFile(paths[0]);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [openLogFile]);
+
   const handleLoad = () => {
-    const t = inputText;
-    setText(t);
-    search.reset();
+    loadText(inputText);
   };
 
   const handleClear = () => {
@@ -63,13 +111,16 @@ const LogPage: React.FC = () => {
             fontSize: 13,
           }}
         />
-        <div>
+        <div style={{ display: "flex", gap: 8 }}>
           <Button
             type="primary"
             onClick={handleLoad}
             disabled={inputText.length === 0}
           >
             查看日志
+          </Button>
+          <Button icon={<FolderOpenOutlined />} onClick={handleOpenFile}>
+            选择文件
           </Button>
         </div>
       </div>
@@ -82,6 +133,7 @@ const LogPage: React.FC = () => {
         lineCount={lines.length}
         onOpenSearch={search.openSearch}
         onClear={handleClear}
+        onOpenFile={handleOpenFile}
       />
       <div
         style={{

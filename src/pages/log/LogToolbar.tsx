@@ -1,6 +1,6 @@
 import React from "react";
-import { Button, Space, Typography } from "antd";
-import { SearchOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Button, Space, Tooltip, Typography } from "antd";
+import { SearchOutlined, DeleteOutlined, FolderOpenOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
@@ -8,12 +8,14 @@ interface LogToolbarProps {
   lineCount: number;
   onOpenSearch: () => void;
   onClear: () => void;
+  onOpenFile: () => void;
 }
 
 const LogToolbar: React.FC<LogToolbarProps> = ({
   lineCount,
   onOpenSearch,
   onClear,
+  onOpenFile,
 }) => {
   return (
     <div
@@ -33,6 +35,9 @@ const LogToolbar: React.FC<LogToolbarProps> = ({
         共 {lineCount.toLocaleString()} 行
       </Text>
       <Space>
+        <Tooltip title="选择文件">
+          <Button icon={<FolderOpenOutlined />} onClick={onOpenFile} />
+        </Tooltip>
         <Button icon={<SearchOutlined />} onClick={onOpenSearch}>
           搜索
         </Button>
