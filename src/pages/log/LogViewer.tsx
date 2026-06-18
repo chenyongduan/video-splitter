@@ -65,7 +65,10 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     // visible lines and highlighted with <mark>.
     const [selectedText, setSelectedText] = useState("");
 
-    // Dismiss tooltip on deselect + track in-container selection for highlighting
+    // Dismiss tooltip and clear selection highlight on deselect.
+    // We deliberately do NOT call setSelectedText() here — doing so during
+    // an active drag causes a re-render that rewrites DOM nodes, which
+    // resets the browser's selection anchor to the start of the line.
     useEffect(() => {
       const onSelectionChange = () => {
         const sel = window.getSelection();
@@ -76,17 +79,27 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
             clearTimeout(tsTimerRef.current);
             tsTimerRef.current = null;
           }
-          return;
         }
-        // Only highlight selection that originates inside the log content
+      };
+      document.addEventListener("selectionchange", onSelectionChange);
+      return () => document.removeEventListener("selectionchange", onSelectionChange);
+    }, []);
+
+    // Capture the selected text on mouseup — i.e. only after the drag
+    // completes. This avoids re-rendering (and rewriting DOM nodes) while
+    // the user is still dragging, which would break the selection anchor.
+    useEffect(() => {
+      const onMouseUp = () => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
         const anchor = sel.anchorNode;
         if (anchor && scrollRef.current?.contains(anchor)) {
           const text = sel.toString();
           if (text) setSelectedText(text);
         }
       };
-      document.addEventListener("selectionchange", onSelectionChange);
-      return () => document.removeEventListener("selectionchange", onSelectionChange);
+      document.addEventListener("mouseup", onMouseUp);
+      return () => document.removeEventListener("mouseup", onMouseUp);
     }, []);
 
     const charWidth = useMemo(() => measureCharWidth(), []);
