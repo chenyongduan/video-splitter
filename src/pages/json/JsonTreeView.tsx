@@ -51,6 +51,22 @@ const JsonTreeView: React.FC = () => {
   } | null>(null);
   const tsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Dismiss tooltip when selection is cleared
+  useEffect(() => {
+    const onSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) {
+        setTsTooltip(null);
+        if (tsTimerRef.current) {
+          clearTimeout(tsTimerRef.current);
+          tsTimerRef.current = null;
+        }
+      }
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, []);
+
   // Virtual scroll: which lines are in the viewport
   const viewStart = Math.floor(scrollTop / LINE_HEIGHT);
   const viewEnd = viewStart + Math.ceil(viewHeight / LINE_HEIGHT);

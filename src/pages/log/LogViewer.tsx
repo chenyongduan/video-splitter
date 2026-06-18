@@ -1,6 +1,7 @@
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
@@ -59,6 +60,22 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       top: number;
     } | null>(null);
     const tsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Dismiss tooltip when selection is cleared
+    useEffect(() => {
+      const onSelectionChange = () => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) {
+          setTsTooltip(null);
+          if (tsTimerRef.current) {
+            clearTimeout(tsTimerRef.current);
+            tsTimerRef.current = null;
+          }
+        }
+      };
+      document.addEventListener("selectionchange", onSelectionChange);
+      return () => document.removeEventListener("selectionchange", onSelectionChange);
+    }, []);
 
     const charWidth = useMemo(() => measureCharWidth(), []);
 
