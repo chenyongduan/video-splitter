@@ -49,16 +49,22 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     const scrollRef = useRef<HTMLDivElement>(null);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerWidth, setContainerWidth] = useState(0);
+    const [containerHeight, setContainerHeight] = useState(0);
 
     const charWidth = useMemo(() => measureCharWidth(), []);
 
-    // Measure + observe container width.
+    // Measure + observe container size (both dims so height-only resizes
+    // also recompute the visible window).
     useLayoutEffect(() => {
       const el = scrollRef.current;
       if (!el) return;
       setContainerWidth(el.clientWidth);
+      setContainerHeight(el.clientHeight);
       const ro = new ResizeObserver((entries) => {
-        for (const e of entries) setContainerWidth(e.contentRect.width);
+        for (const e of entries) {
+          setContainerWidth(e.contentRect.width);
+          setContainerHeight(e.contentRect.height);
+        }
       });
       ro.observe(el);
       return () => ro.disconnect();
@@ -87,7 +93,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       return { lineNumberWidth, prefixSum, totalHeight: prefixSum[n] };
     }, [lines, charWidth, containerWidth]);
 
-    const viewportHeight = scrollRef.current?.clientHeight ?? 0;
+    const viewportHeight = containerHeight;
 
     const { startIndex, endIndex } = useMemo(() => {
       if (geo.prefixSum.length <= 1)
