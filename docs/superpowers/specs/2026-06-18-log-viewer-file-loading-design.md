@@ -25,7 +25,7 @@
 ## 4. 读取方式
 
 - `@tauri-apps/plugin-fs` 的 `readTextFile(path)`，纯前端。
-- 权限 `dialog:allow-open`、`fs:allow-read-file`（path `**`）已在 `src-tauri/capabilities/default.json` 授予 → 无需改 capabilities、无需重建 Rust，前端 HMR 即生效。
+- 权限 `dialog:allow-open`、`fs:allow-read-text-file`（path `**`）已在 `src-tauri/capabilities/default.json` 授予 → 无需改 Rust 代码，前端 HMR 即生效。
 
 ## 5. 错误处理
 
