@@ -33,7 +33,7 @@ interface InitAnalyticInfo {
 
 export interface LogAnalysisResult {
   device: DeviceInfo | null;
-  room: RoomInfo | null;
+  rooms: RoomInfo[];
   diagnostic: DiagnosticInfo;
 }
 
@@ -63,14 +63,14 @@ export function analyzeLogText(text: string): LogAnalysisResult {
   const pcDeviceInfo = extractFirstJson<DeviceInfo>(text, DEVICE_MARKERS);
   const mobileDeviceInfo = extractMobileDeviceInfo(text);
   const initAnalyticInfo = extractFirstJson<InitAnalyticInfo>(text, INIT_ANALYTIC_MARKERS);
-  const roomMatch = extractFirstJsonMatch<Record<string, unknown>>(text, ROOM_MARKERS);
+  const roomMatches = extractJsonMatches<Record<string, unknown>>(text, ROOM_MARKERS);
 
   return {
     device: mergeDeviceInfo(
       mobileDeviceInfo ?? (pcDeviceInfo ? { ...pcDeviceInfo, deviceType: "pc" } : null),
       initAnalyticInfo
     ),
-    room: roomMatch ? normalizeRoomInfo(roomMatch.value, getLineNumber(text, roomMatch.markerIndex)) : null,
+    rooms: dedupeRoomsByRoomId(roomMatches.map((match) => normalizeRoomInfo(match.value, getLineNumber(text, match.markerIndex)))),
     diagnostic: analyzeDiagnostics(text),
   };
 }
@@ -209,14 +209,40 @@ function extractFirstJson<T>(text: string, markers: string[]): T | null {
 
 function extractFirstJsonMatch<T>(text: string, markers: string[]): { value: T; markerIndex: number } | null {
   for (const marker of markers) {
-    const parsed = extractJsonAfterMarker<T>(text, marker);
+    const parsed = extractJsonAfterMarker<T>(text, marker, 0);
     if (parsed) return parsed;
   }
   return null;
 }
 
-function extractJsonAfterMarker<T>(text: string, marker: string): { value: T; markerIndex: number } | null {
-  const markerIndex = text.indexOf(marker);
+function extractJsonMatches<T>(text: string, markers: string[]): Array<{ value: T; markerIndex: number }> {
+  const matches: Array<{ value: T; markerIndex: number }> = [];
+  const seenMarkerIndexes = new Set<number>();
+
+  for (const marker of markers) {
+    let fromIndex = 0;
+    while (fromIndex < text.length) {
+      const parsed = extractJsonAfterMarker<T>(text, marker, fromIndex);
+      if (!parsed) break;
+
+      if (!seenMarkerIndexes.has(parsed.markerIndex)) {
+        matches.push(parsed);
+        seenMarkerIndexes.add(parsed.markerIndex);
+      }
+
+      fromIndex = parsed.endIndex + 1;
+    }
+  }
+
+  return matches.sort((a, b) => a.markerIndex - b.markerIndex);
+}
+
+function extractJsonAfterMarker<T>(
+  text: string,
+  marker: string,
+  fromIndex: number
+): { value: T; markerIndex: number; endIndex: number } | null {
+  const markerIndex = text.indexOf(marker, fromIndex);
   if (markerIndex < 0) return null;
 
   const jsonStart = text.indexOf("{", markerIndex + marker.length);
@@ -258,6 +284,7 @@ function extractJsonAfterMarker<T>(text: string, marker: string): { value: T; ma
           return {
             value: JSON.parse(jsonText) as T,
             markerIndex,
+            endIndex: i,
           };
         } catch {
           return null;
@@ -304,6 +331,17 @@ function normalizeRoomInfo(room: Record<string, unknown>, lineNumber: number): R
     teacherId: stringifyFirst(room, ["teacherId", "teacher.id", "teacherInfo.id", "teacher.userId"]),
     schoolId: stringifyFirst(room, ["schoolId", "class.schoolId", "classInfo.schoolId", "room.schoolId"]),
   };
+}
+
+function dedupeRoomsByRoomId(rooms: RoomInfo[]): RoomInfo[] {
+  const seenRoomIds = new Set<string>();
+
+  return rooms.filter((room) => {
+    if (!room.roomId) return true;
+    if (seenRoomIds.has(room.roomId)) return false;
+    seenRoomIds.add(room.roomId);
+    return true;
+  });
 }
 
 function stringifyFirst(source: Record<string, unknown>, paths: string[]): string {

@@ -6,8 +6,8 @@ import { formatTimestamp, tryParseTimestamp } from "../../utils/timestamp";
 const { Text } = Typography;
 
 const descriptionLabelStyle: React.CSSProperties = {
-  width: 140,
-  minWidth: 140,
+  width: 120,
+  minWidth: 120,
 };
 
 interface LogAnalysisModalProps {
@@ -24,7 +24,7 @@ const LogAnalysisModal: React.FC<LogAnalysisModalProps> = ({ open, result, onClo
       title="日志分析"
       footer={null}
       onCancel={onClose}
-      width={720}
+      width={920}
       centered
       destroyOnHidden
     >
@@ -44,7 +44,11 @@ const LogAnalysisModal: React.FC<LogAnalysisModalProps> = ({ open, result, onClo
             label: "房间",
             children: (
               <div style={{ paddingTop: 16 }}>
-                {result.room ? <RoomPanel room={result.room} onJumpToLine={onJumpToLine} /> : <Empty description="未匹配到房间信息" />}
+                {result.rooms.length > 0 ? (
+                  <RoomPanel rooms={result.rooms} onJumpToLine={onJumpToLine} />
+                ) : (
+                  <Empty description="未匹配到房间信息" />
+                )}
               </div>
             ),
           },
@@ -115,21 +119,33 @@ const DevicePanel: React.FC<{ device: DeviceInfo }> = ({ device }) => {
   );
 };
 
-const RoomPanel: React.FC<{ room: RoomInfo; onJumpToLine: (lineNumber: number) => void }> = ({ room, onJumpToLine }) => {
+const RoomPanel: React.FC<{ rooms: RoomInfo[]; onJumpToLine: (lineNumber: number) => void }> = ({ rooms, onJumpToLine }) => {
   return (
-    <Descriptions bordered column={1} size="small" labelStyle={descriptionLabelStyle}>
-      <Descriptions.Item label="日志行数">
-        <Button type="link" size="small" style={{ padding: 0, height: "auto" }} onClick={() => onJumpToLine(room.lineNumber)}>
-          {room.lineNumber}
-        </Button>
-      </Descriptions.Item>
-      <Descriptions.Item label="房间 id">{formatValue(room.roomId)}</Descriptions.Item>
-      <Descriptions.Item label="开始时间">{formatDateTime(room.startTime)}</Descriptions.Item>
-      <Descriptions.Item label="结束时间">{formatDateTime(room.endTime)}</Descriptions.Item>
-      <Descriptions.Item label="原始结束时间">{formatDateTime(room.originalEndTime)}</Descriptions.Item>
-      <Descriptions.Item label="老师信息">{formatTeacher(room)}</Descriptions.Item>
-      <Descriptions.Item label="班级 id">{formatValue(room.schoolId)}</Descriptions.Item>
-    </Descriptions>
+    <div style={{ maxHeight: 520, overflow: "auto", paddingRight: 4 }}>
+      {rooms.map((room, index) => (
+        <Descriptions
+          key={`${room.lineNumber}-${room.roomId || index}`}
+          bordered
+          column={{ xs: 1, sm: 1, md: 2 }}
+          size="small"
+          labelStyle={descriptionLabelStyle}
+          title={`房间 ${index + 1}`}
+          style={{ marginBottom: index === rooms.length - 1 ? 0 : 16 }}
+        >
+          <Descriptions.Item label="日志行数">
+            <Button type="link" size="small" style={{ padding: 0, height: "auto" }} onClick={() => onJumpToLine(room.lineNumber)}>
+              {room.lineNumber}
+            </Button>
+          </Descriptions.Item>
+          <Descriptions.Item label="房间 id">{formatValue(room.roomId)}</Descriptions.Item>
+          <Descriptions.Item label="开始时间">{formatDateTime(room.startTime)}</Descriptions.Item>
+          <Descriptions.Item label="结束时间">{formatDateTime(room.endTime)}</Descriptions.Item>
+          <Descriptions.Item label="原始结束时间">{formatDateTime(room.originalEndTime)}</Descriptions.Item>
+          <Descriptions.Item label="老师信息">{formatTeacher(room)}</Descriptions.Item>
+          <Descriptions.Item label="班级 id">{formatValue(room.schoolId)}</Descriptions.Item>
+        </Descriptions>
+      ))}
+    </div>
   );
 };
 

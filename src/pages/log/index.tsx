@@ -26,7 +26,7 @@ const LogPage: React.FC = () => {
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<LogAnalysisResult>({
     device: null,
-    room: null,
+    rooms: [],
     diagnostic: {
       skynetDisconnectCount: 0,
       latencyCount: 0,
@@ -87,7 +87,7 @@ const LogPage: React.FC = () => {
 
   const handleAnalyze = useCallback(() => {
     const result = analyzeLogText(logText);
-    if (!result.device && !result.room && result.diagnostic.skynetDisconnectCount === 0 && result.diagnostic.latencyCount === 0) {
+    if (!result.device && result.rooms.length === 0 && result.diagnostic.skynetDisconnectCount === 0 && result.diagnostic.latencyCount === 0) {
       message.warning("未匹配到可分析的信息");
     }
     setAnalysisResult(result);
