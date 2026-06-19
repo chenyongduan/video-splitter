@@ -13,7 +13,7 @@ import { buildMatcher, type LineMatcher } from "./highlight";
 import { tryParseTimestamp, formatTimestamp } from "../../utils/timestamp";
 
 const OVERSCAN = 3;
-const RIGHT_PADDING = 16;
+const CONTENT_HORIZONTAL_PADDING = 16;
 
 export interface LogViewerHandle {
   scrollToLine: (lineIndex: number) => void;
@@ -32,6 +32,48 @@ function measureCharWidth(): number {
   if (!ctx) return 7.8;
   ctx.font = `${LOG_FONT_SIZE}px ${LOG_FONT}`;
   return ctx.measureText("M").width;
+}
+
+function createLineHeightMeasurer(): (text: string, width: number) => number {
+  if (typeof document === "undefined") return () => LINE_HEIGHT;
+
+  const el = document.createElement("div");
+  Object.assign(el.style, {
+    position: "absolute",
+    visibility: "hidden",
+    pointerEvents: "none",
+    left: "-10000px",
+    top: "0",
+    zIndex: "-1",
+    fontFamily: LOG_FONT,
+    fontSize: `${LOG_FONT_SIZE}px`,
+    lineHeight: `${LINE_HEIGHT}px`,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-all",
+    overflowWrap: "anywhere",
+    boxSizing: "border-box",
+    padding: "0",
+    border: "0",
+  });
+  document.body.appendChild(el);
+
+  const cache = new Map<string, number>();
+
+  return (text: string, width: number) => {
+    if (!text) return LINE_HEIGHT;
+
+    const cacheKey = `${width}\0${text}`;
+    const cached = cache.get(cacheKey);
+    if (cached !== undefined) return cached;
+
+    el.style.width = `${width}px`;
+    el.textContent = text;
+
+    const rows = Math.max(1, Math.ceil(el.scrollHeight / LINE_HEIGHT));
+    const height = rows * LINE_HEIGHT + (rows > 1 ? LINE_HEIGHT / 2 : 0);
+    cache.set(cacheKey, height);
+    return height;
+  };
 }
 
 // Binary search: smallest i in [0, n-1] with prefixSum[i+1] > scrollTop.
@@ -142,6 +184,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     }, []);
 
     const charWidth = useMemo(() => measureCharWidth(), []);
+    const measureLineHeight = useMemo(() => createLineHeightMeasurer(), []);
 
     // Measure + observe container size (both dims so height-only resizes
     // also recompute the visible window).
@@ -169,19 +212,31 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       );
       const contentWidth = Math.max(
         50,
-        containerWidth - lineNumberWidth - RIGHT_PADDING
+        containerWidth - lineNumberWidth - CONTENT_HORIZONTAL_PADDING - 4
       );
-      const prefixSum = new Array<number>(n + 1);
-      prefixSum[0] = 0;
+      const visibleLineIndexes: number[] = [];
+      const originalToVisibleIndex = new Array<number>(n).fill(-1);
+
       for (let i = 0; i < n; i++) {
-        const rows = Math.max(
-          1,
-          Math.ceil((lines[i].length * charWidth) / contentWidth)
-        );
-        prefixSum[i + 1] = prefixSum[i] + rows * LINE_HEIGHT;
+        if (lines[i].trim().length === 0) continue;
+        originalToVisibleIndex[i] = visibleLineIndexes.length;
+        visibleLineIndexes.push(i);
       }
-      return { lineNumberWidth, prefixSum, totalHeight: prefixSum[n] };
-    }, [lines, charWidth, containerWidth]);
+
+      const prefixSum = new Array<number>(visibleLineIndexes.length + 1);
+      prefixSum[0] = 0;
+      for (let i = 0; i < visibleLineIndexes.length; i++) {
+        const lineIndex = visibleLineIndexes[i];
+        prefixSum[i + 1] = prefixSum[i] + measureLineHeight(lines[lineIndex], contentWidth);
+      }
+      return {
+        lineNumberWidth,
+        originalToVisibleIndex,
+        prefixSum,
+        totalHeight: prefixSum[visibleLineIndexes.length],
+        visibleLineIndexes,
+      };
+    }, [lines, charWidth, containerWidth, measureLineHeight]);
 
     const viewportHeight = containerHeight;
 
@@ -193,22 +248,24 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       let end = start;
       const limit = scrollTop + viewportHeight + OVERSCAN * LINE_HEIGHT;
       while (
-        end < lines.length &&
+        end < geo.visibleLineIndexes.length &&
         geo.prefixSum[end] < limit
       ) {
         end++;
       }
       end += OVERSCAN;
-      if (end > lines.length) end = lines.length;
+      if (end > geo.visibleLineIndexes.length) end = geo.visibleLineIndexes.length;
       return { startIndex: start, endIndex: end };
-    }, [geo, scrollTop, viewportHeight, lines.length]);
+    }, [geo, scrollTop, viewportHeight]);
 
     const scrollToLine = useCallback(
       (lineIndex: number) => {
         const el = scrollRef.current;
         if (!el) return;
         const clamped = Math.max(0, Math.min(lineIndex, lines.length - 1));
-        const target = geo.prefixSum[clamped];
+        const visibleIndex = findNearestVisibleIndex(clamped, geo.originalToVisibleIndex);
+        if (visibleIndex < 0) return;
+        const target = geo.prefixSum[visibleIndex];
         // Try to center the line in the viewport.
         const centered = Math.max(
           0,
@@ -217,7 +274,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
         el.scrollTop = centered;
         setScrollTop(centered);
       },
-      [geo.prefixSum, lines.length]
+      [geo.originalToVisibleIndex, geo.prefixSum, lines.length]
     );
 
     useImperativeHandle(ref, () => ({ scrollToLine }), [scrollToLine]);
@@ -345,19 +402,20 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
         ? selectionMatchLines[selMatchCursor]
         : -1;
     for (let i = startIndex; i < endIndex; i++) {
+      const lineIndex = geo.visibleLineIndexes[i];
       const restore: RestoreSelection | null =
-        selInfo && selInfo.line === i
+        selInfo && selInfo.line === lineIndex
           ? { startOffset: selInfo.startOffset, length: selInfo.length }
           : null;
       rows.push(
         <LogLine
-          key={i}
-          line={lines[i]}
-          lineNumber={i + 1}
-          lineIndex={i}
+          key={lineIndex}
+          line={lines[lineIndex]}
+          lineNumber={lineIndex + 1}
+          lineIndex={lineIndex}
           matcher={effectiveMatcher}
           lineNumberWidth={geo.lineNumberWidth}
-          isCurrent={currentLine === i || selCursorLine === i}
+          isCurrent={currentLine === lineIndex || selCursorLine === lineIndex}
           top={geo.prefixSum[i]}
           height={geo.prefixSum[i + 1] - geo.prefixSum[i]}
           restoreSelection={restore}
@@ -412,3 +470,18 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
 LogViewer.displayName = "LogViewer";
 
 export default LogViewer;
+
+function findNearestVisibleIndex(lineIndex: number, originalToVisibleIndex: number[]): number {
+  const exact = originalToVisibleIndex[lineIndex];
+  if (exact >= 0) return exact;
+
+  for (let i = lineIndex + 1; i < originalToVisibleIndex.length; i++) {
+    if (originalToVisibleIndex[i] >= 0) return originalToVisibleIndex[i];
+  }
+
+  for (let i = lineIndex - 1; i >= 0; i--) {
+    if (originalToVisibleIndex[i] >= 0) return originalToVisibleIndex[i];
+  }
+
+  return -1;
+}

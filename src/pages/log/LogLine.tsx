@@ -102,6 +102,7 @@ const LogLine: React.FC<LogLineProps> = ({
         left: 0,
         right: 0,
         display: "flex",
+        lineHeight: `${LINE_HEIGHT}px`,
         background: isCurrent ? "#fff7e6" : "transparent",
         borderLeft: isCurrent
           ? "2px solid #fa8c16"
@@ -116,6 +117,7 @@ const LogLine: React.FC<LogLineProps> = ({
           color: "#999",
           userSelect: "none",
           flexShrink: 0,
+          lineHeight: `${LINE_HEIGHT}px`,
         }}
       >
         {lineNumber}
@@ -126,9 +128,12 @@ const LogLine: React.FC<LogLineProps> = ({
         style={{
           whiteSpace: "pre-wrap",
           wordBreak: "break-all",
+          overflowWrap: "anywhere",
           flex: 1,
+          minWidth: 0,
           paddingLeft: 8,
           paddingRight: 8,
+          lineHeight: `${LINE_HEIGHT}px`,
         }}
       >
         {segments.map((s, i) =>
