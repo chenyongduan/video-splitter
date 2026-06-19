@@ -1,12 +1,13 @@
 import React from "react";
 import { Button, Space, Tooltip, Typography } from "antd";
-import { SearchOutlined, FolderOpenOutlined, CloseOutlined } from "@ant-design/icons";
+import { BarChartOutlined, CloseOutlined, FolderOpenOutlined, SearchOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
 interface LogToolbarProps {
   lineCount: number;
   onOpenSearch: () => void;
+  onAnalyze: () => void;
   onClose: () => void;
   onOpenFile: () => void;
 }
@@ -14,6 +15,7 @@ interface LogToolbarProps {
 const LogToolbar: React.FC<LogToolbarProps> = ({
   lineCount,
   onOpenSearch,
+  onAnalyze,
   onClose,
   onOpenFile,
 }) => {
@@ -43,6 +45,11 @@ const LogToolbar: React.FC<LogToolbarProps> = ({
         <Tooltip title="搜索 (Ctrl/Cmd+F)">
           <Button icon={<SearchOutlined />} onClick={onOpenSearch}>
             搜索
+          </Button>
+        </Tooltip>
+        <Tooltip title="分析日志内容">
+          <Button icon={<BarChartOutlined />} onClick={onAnalyze}>
+            分析
           </Button>
         </Tooltip>
         <Button icon={<CloseOutlined />} danger onClick={onClose}>

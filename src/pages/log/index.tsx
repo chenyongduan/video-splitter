@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { message } from "antd";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readTextFile } from "@tauri-apps/plugin-fs";
@@ -7,7 +7,9 @@ import LogDropZone from "./LogDropZone";
 import SearchBar from "../../components/SearchBar";
 import LogViewer, { type LogViewerHandle } from "./LogViewer";
 import LogErrorBoundary from "./LogErrorBoundary";
+import LogAnalysisModal from "./LogAnalysisModal";
 import { useLogSearch } from "./useLogSearch";
+import { analyzeLogText, type LogAnalysisResult } from "./logAnalysis";
 import { useAppStore } from "../../store/segmentStore";
 
 const LogPage: React.FC = () => {
@@ -21,6 +23,17 @@ const LogPage: React.FC = () => {
   );
   const search = useLogSearch(lines);
   const viewerRef = useRef<LogViewerHandle>(null);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<LogAnalysisResult>({
+    device: null,
+    room: null,
+    diagnostic: {
+      skynetDisconnectCount: 0,
+      latencyCount: 0,
+      averageLatency: null,
+    },
+  });
+  const [searchFocusSignal, setSearchFocusSignal] = useState(0);
 
   const loaded = logText.length > 0;
 
@@ -67,6 +80,27 @@ const LogPage: React.FC = () => {
     }
   };
 
+  const handleOpenSearch = useCallback(() => {
+    search.openSearch();
+    setSearchFocusSignal((signal) => signal + 1);
+  }, [search]);
+
+  const handleAnalyze = useCallback(() => {
+    const result = analyzeLogText(logText);
+    if (!result.device && !result.room && result.diagnostic.skynetDisconnectCount === 0 && result.diagnostic.latencyCount === 0) {
+      message.warning("未匹配到可分析的信息");
+    }
+    setAnalysisResult(result);
+    setAnalysisOpen(true);
+  }, [logText]);
+
+  const handleJumpToLine = useCallback((lineNumber: number) => {
+    setAnalysisOpen(false);
+    requestAnimationFrame(() => {
+      viewerRef.current?.scrollToLine(lineNumber - 1);
+    });
+  }, []);
+
   // Keyboard shortcuts (only active once a log is loaded):
   //   Ctrl/Cmd+F        open search
   //   Ctrl/Cmd+G        next match        Shift+Ctrl/Cmd+G  previous match
@@ -77,7 +111,7 @@ const LogPage: React.FC = () => {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && (e.key === "f" || e.key === "F")) {
         e.preventDefault();
-        search.openSearch();
+        handleOpenSearch();
         return;
       }
       if (mod && (e.key === "g" || e.key === "G")) {
@@ -95,7 +129,7 @@ const LogPage: React.FC = () => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [search, loaded]);
+  }, [search, loaded, handleOpenSearch]);
 
   if (!loaded) {
     return (
@@ -109,9 +143,16 @@ const LogPage: React.FC = () => {
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <LogToolbar
         lineCount={lines.length}
-        onOpenSearch={search.openSearch}
+        onOpenSearch={handleOpenSearch}
+        onAnalyze={handleAnalyze}
         onClose={clearLog}
         onOpenFile={handleOpenFile}
+      />
+      <LogAnalysisModal
+        open={analysisOpen}
+        result={analysisResult}
+        onClose={() => setAnalysisOpen(false)}
+        onJumpToLine={handleJumpToLine}
       />
       <LogErrorBoundary>
         <div
@@ -139,6 +180,7 @@ const LogPage: React.FC = () => {
               onNext={search.next}
               onPrev={search.prev}
               onClose={search.closeSearch}
+              focusSignal={searchFocusSignal}
             />
           )}
           <LogViewer

@@ -34,6 +34,7 @@ const JsonTreeView: React.FC = () => {
 
   // Search state
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -196,6 +197,7 @@ const JsonTreeView: React.FC = () => {
         e.preventDefault();
         if (!isJsonLoaded) return;
         setSearchOpen(true);
+        setSearchFocusSignal((signal) => signal + 1);
         return;
       }
       if (mod && e.key === "d" && searchOpen) {
@@ -369,6 +371,7 @@ const JsonTreeView: React.FC = () => {
           onNext={goToNextMatch}
           onPrev={goToPrevMatch}
           onClose={closeSearch}
+          focusSignal={searchFocusSignal}
         />
       )}
 

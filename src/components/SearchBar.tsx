@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Input, Button, Space, Tooltip } from "antd";
 import {
   CloseOutlined,
@@ -22,6 +22,7 @@ export interface SearchBarProps {
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
+  focusSignal?: number;
   placeholder?: string;
 }
 
@@ -40,9 +41,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onNext,
   onPrev,
   onClose,
+  focusSignal = 0,
   placeholder = "搜索... (回车搜索)",
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [searchSubmitted, setSearchSubmitted] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -50,7 +53,17 @@ const SearchBar: React.FC<SearchBarProps> = ({
       inputRef.current?.select();
     }, 50);
     return () => clearTimeout(t);
-  }, []);
+  }, [focusSignal]);
+
+  const handlePressEnter = () => {
+    if (searchSubmitted && matchCount > 0) {
+      onNext();
+      return;
+    }
+
+    onSearch();
+    setSearchSubmitted(true);
+  };
 
   const matchText =
     matchCount === 0 ? "无结果" : `${currentIndex + 1}/${matchCount}`;
@@ -94,8 +107,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
         ref={inputRef as any}
         size="small"
         value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
-        onPressEnter={onSearch}
+        onChange={(e) => {
+          setSearchSubmitted(false);
+          onQueryChange(e.target.value);
+        }}
+        onPressEnter={handlePressEnter}
         placeholder={placeholder}
         style={{ width: 200, fontSize: 13, height: 28 }}
         prefix={<SearchOutlined style={{ color: "#999" }} />}
