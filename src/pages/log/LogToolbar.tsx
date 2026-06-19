@@ -6,6 +6,7 @@ const { Text } = Typography;
 
 interface LogToolbarProps {
   lineCount: number;
+  active?: boolean;
   onOpenSearch: () => void;
   onAnalyze: () => void;
   onClose: () => void;
@@ -14,6 +15,7 @@ interface LogToolbarProps {
 
 const LogToolbar: React.FC<LogToolbarProps> = ({
   lineCount,
+  active = true,
   onOpenSearch,
   onAnalyze,
   onClose,
@@ -37,17 +39,17 @@ const LogToolbar: React.FC<LogToolbarProps> = ({
         共 {lineCount.toLocaleString()} 行
       </Text>
       <Space>
-        <Tooltip title="打开文件">
+        <Tooltip title="打开文件" open={active ? undefined : false}>
           <Button icon={<FolderOpenOutlined />} onClick={onOpenFile}>
             打开文件
           </Button>
         </Tooltip>
-        <Tooltip title="搜索 (Ctrl/Cmd+F)">
+        <Tooltip title="搜索 (Ctrl/Cmd+F)" open={active ? undefined : false}>
           <Button icon={<SearchOutlined />} onClick={onOpenSearch}>
             搜索
           </Button>
         </Tooltip>
-        <Tooltip title="分析日志内容">
+        <Tooltip title="分析日志内容" open={active ? undefined : false}>
           <Button icon={<BarChartOutlined />} onClick={onAnalyze}>
             分析
           </Button>

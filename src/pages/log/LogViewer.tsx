@@ -23,6 +23,7 @@ interface LogViewerProps {
   lines: string[];
   matcher: LineMatcher | null;
   currentLine: number | null; // 0-based
+  active?: boolean;
 }
 
 function measureCharWidth(): number {
@@ -89,7 +90,7 @@ function findStartIndex(prefixSum: number[], scrollTop: number): number {
 }
 
 const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
-  ({ lines, matcher, currentLine }, ref) => {
+  ({ lines, matcher, currentLine, active = true }, ref) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerWidth, setContainerWidth] = useState(0);
@@ -310,11 +311,12 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     // Clear selection highlight on Escape
     useEffect(() => {
       const onKeyDown = (e: KeyboardEvent) => {
+        if (!active) return;
         if (e.key === "Escape") setSelInfo(null);
       };
       window.addEventListener("keydown", onKeyDown);
       return () => window.removeEventListener("keydown", onKeyDown);
-    }, []);
+    }, [active]);
 
     // Build a matcher from the currently selected text (literal, case-sensitive)
     const selectionMatcher: LineMatcher | null = useMemo(() => {
@@ -353,6 +355,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
     // scroll to that line. Wraps around at the end of the matches.
     useEffect(() => {
       const onKeyDown = (e: KeyboardEvent) => {
+        if (!active) return;
         const mod = e.metaKey || e.ctrlKey;
         if (!mod || e.key !== "d" || e.shiftKey) return;
         if (selectionMatchLines.length === 0) return;
@@ -365,7 +368,7 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
       };
       window.addEventListener("keydown", onKeyDown);
       return () => window.removeEventListener("keydown", onKeyDown);
-    }, [selectionMatchLines, scrollToLine]);
+    }, [selectionMatchLines, scrollToLine, active]);
 
     // When search opens (matcher prop becomes non-null), clear selection highlight
     // so the two highlight systems don't visually conflict.

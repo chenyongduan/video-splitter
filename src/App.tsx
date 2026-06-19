@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Layout, Tabs } from "antd";
 import { useAppStore } from "./store/segmentStore";
 import VideoPage from "./pages/video";
@@ -16,6 +16,8 @@ const STORAGE_KEY = "mediakit_active_tab";
 const App: React.FC = () => {
   const activeTab = useAppStore((s) => s.activeTab);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
+  const hasLogText = useAppStore((s) => s.logText.length > 0);
+  const [logMounted, setLogMounted] = useState(false);
 
   // 启动时从 localStorage 恢复 tab
   useEffect(() => {
@@ -24,6 +26,13 @@ const App: React.FC = () => {
       setActiveTab(saved as AppTab);
     }
   }, [setActiveTab]);
+
+  // 日志页打开大文件后，切走再切回时保留拆行和虚拟列表测量缓存。
+  useEffect(() => {
+    if (activeTab === "log" || hasLogText) {
+      setLogMounted(true);
+    }
+  }, [activeTab, hasLogText]);
 
   const handleTabChange = (key: string) => {
     const tab = key as AppTab;
@@ -69,13 +78,25 @@ const App: React.FC = () => {
         />
       </Header>
 
-      <Content style={{ overflow: "auto", flex: 1 }}>
+      <Content style={{ overflow: "auto", flex: 1, position: "relative" }}>
         {activeTab === "video" && <VideoPage />}
         {activeTab === "audio" && <AudioPage />}
         {activeTab === "image" && <ImagePage />}
         {activeTab === "icon" && <IconPage />}
         {activeTab === "json" && <JsonPage />}
-        {activeTab === "log" && <LogPage />}
+        {logMounted && (
+          <div
+            aria-hidden={activeTab !== "log"}
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: activeTab === "log" ? "block" : "none",
+              pointerEvents: activeTab === "log" ? "auto" : "none",
+            }}
+          >
+            <LogPage active={activeTab === "log"} />
+          </div>
+        )}
       </Content>
     </Layout>
   );

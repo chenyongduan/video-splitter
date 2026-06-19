@@ -12,7 +12,11 @@ import { useLogSearch } from "./useLogSearch";
 import { analyzeLogText, type LogAnalysisResult } from "./logAnalysis";
 import { useAppStore } from "../../store/segmentStore";
 
-const LogPage: React.FC = () => {
+interface LogPageProps {
+  active?: boolean;
+}
+
+const LogPage: React.FC<LogPageProps> = ({ active = true }) => {
   const logText = useAppStore((s) => s.logText);
   const setLogText = useAppStore((s) => s.setLogText);
   const clearLog = useAppStore((s) => s.clearLog);
@@ -107,7 +111,7 @@ const LogPage: React.FC = () => {
   //   Escape            close search
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!loaded) return;
+      if (!active || !loaded) return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && (e.key === "f" || e.key === "F")) {
         e.preventDefault();
@@ -129,7 +133,7 @@ const LogPage: React.FC = () => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [search, loaded, handleOpenSearch]);
+  }, [search, loaded, active, handleOpenSearch]);
 
   if (!loaded) {
     return (
@@ -143,6 +147,7 @@ const LogPage: React.FC = () => {
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <LogToolbar
         lineCount={lines.length}
+        active={active}
         onOpenSearch={handleOpenSearch}
         onAnalyze={handleAnalyze}
         onClose={clearLog}
@@ -164,7 +169,7 @@ const LogPage: React.FC = () => {
             position: "relative",
           }}
         >
-          {search.showSearch && (
+          {active && search.showSearch && (
             <SearchBar
               query={search.query}
               caseSensitive={search.caseSensitive}
@@ -188,6 +193,7 @@ const LogPage: React.FC = () => {
             lines={lines}
             matcher={search.activeMatcher}
             currentLine={search.currentLine}
+            active={active}
           />
         </div>
       </LogErrorBoundary>
