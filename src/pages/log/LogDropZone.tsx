@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { Card } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -39,36 +40,38 @@ const LogDropZone: React.FC<LogDropZoneProps> = ({ onOpenFile, onPickFile }) => 
     <div
       onClick={handleClick}
       style={{
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
+        padding: 16,
+        maxWidth: 960,
+        margin: "0 auto",
+        width: "100%",
       }}
     >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 560,
-          padding: "72px 0",
-          textAlign: "center",
-          cursor: "pointer",
-          borderRadius: 12,
-          border: `2px dashed ${isDragOver ? "#1890ff" : "#d9d9d9"}`,
-          background: isDragOver ? "#e6f7ff" : "transparent",
-          transition: "all 0.3s",
-        }}
-      >
-        <InboxOutlined
-          style={{ fontSize: 56, color: isDragOver ? "#1890ff" : "#999" }}
-        />
-        <p style={{ fontSize: 16, marginTop: 16, margin: 0 }}>
-          拖拽日志文件到此处，或点击选择文件
-        </p>
-        <p style={{ color: "#999", marginTop: 8, margin: 0 }}>
-          支持 .log / .txt 等文本文件
-        </p>
-      </div>
+      <Card style={{ marginTop: 48 }}>
+        <div
+          style={{
+            padding: "60px 0",
+            textAlign: "center",
+            cursor: "pointer",
+            borderRadius: 8,
+            border: `2px dashed ${isDragOver ? "#1890ff" : "#d9d9d9"}`,
+            background: isDragOver ? "#e6f7ff" : "transparent",
+            transition: "all 0.3s",
+          }}
+        >
+          <InboxOutlined
+            style={{
+              fontSize: 48,
+              color: isDragOver ? "#1890ff" : "#999",
+            }}
+          />
+          <p style={{ fontSize: 16, marginTop: 16 }}>
+            拖拽日志文件到此处，或点击选择文件
+          </p>
+          <p style={{ color: "#999" }}>
+            支持 .log / .txt 等文本文件
+          </p>
+        </div>
+      </Card>
     </div>
   );
 };
