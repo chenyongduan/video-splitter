@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, Descriptions, Empty, Modal, Tabs, Typography } from "antd";
-import type { DeviceInfo, DiagnosticInfo, LogAnalysisResult, RoomInfo } from "./logAnalysis";
+import type { DeviceInfo, LogAnalysisResult, RoomInfo } from "./logAnalysis";
 import { formatTimestamp, tryParseTimestamp } from "../../utils/timestamp";
 
 const { Text } = Typography;
@@ -31,15 +31,6 @@ const LogAnalysisModal: React.FC<LogAnalysisModalProps> = ({ open, result, onClo
       <Tabs
         items={[
           {
-            key: "device",
-            label: "设备",
-            children: (
-              <div style={{ paddingTop: 16 }}>
-                {result.device ? <DevicePanel device={result.device} /> : <Empty description="未匹配到设备信息" />}
-              </div>
-            ),
-          },
-          {
             key: "room",
             label: "房间",
             children: (
@@ -53,11 +44,11 @@ const LogAnalysisModal: React.FC<LogAnalysisModalProps> = ({ open, result, onClo
             ),
           },
           {
-            key: "diagnostic",
-            label: "诊断",
+            key: "device",
+            label: "设备",
             children: (
               <div style={{ paddingTop: 16 }}>
-                <DiagnosticPanel diagnostic={result.diagnostic} />
+                {result.device ? <DevicePanel device={result.device} /> : <Empty description="未匹配到设备信息" />}
               </div>
             ),
           },
@@ -133,9 +124,7 @@ const RoomPanel: React.FC<{ rooms: RoomInfo[]; onJumpToLine: (lineNumber: number
           style={{ marginBottom: index === rooms.length - 1 ? 0 : 16 }}
         >
           <Descriptions.Item label="日志行数">
-            <Button type="link" size="small" style={{ padding: 0, height: "auto" }} onClick={() => onJumpToLine(room.lineNumber)}>
-              {room.lineNumber}
-            </Button>
+            <LineNumberLinks lineNumbers={room.lineNumbers} onJumpToLine={onJumpToLine} />
           </Descriptions.Item>
           <Descriptions.Item label="房间 id">{formatValue(room.roomId)}</Descriptions.Item>
           <Descriptions.Item label="开始时间">{formatDateTime(room.startTime)}</Descriptions.Item>
@@ -143,19 +132,27 @@ const RoomPanel: React.FC<{ rooms: RoomInfo[]; onJumpToLine: (lineNumber: number
           <Descriptions.Item label="原始结束时间">{formatDateTime(room.originalEndTime)}</Descriptions.Item>
           <Descriptions.Item label="老师信息">{formatTeacher(room)}</Descriptions.Item>
           <Descriptions.Item label="班级 id">{formatValue(room.schoolId)}</Descriptions.Item>
+          <Descriptions.Item label="disconnect 次数">{room.diagnostic.skynetDisconnectCount}</Descriptions.Item>
+          <Descriptions.Item label="latency 统计次数">{room.diagnostic.latencyCount}</Descriptions.Item>
+          <Descriptions.Item label="平均延迟">{formatLatency(room.diagnostic.averageLatency)}</Descriptions.Item>
         </Descriptions>
       ))}
     </div>
   );
 };
 
-const DiagnosticPanel: React.FC<{ diagnostic: DiagnosticInfo }> = ({ diagnostic }) => {
+const LineNumberLinks: React.FC<{ lineNumbers: number[]; onJumpToLine: (lineNumber: number) => void }> = ({ lineNumbers, onJumpToLine }) => {
   return (
-    <Descriptions bordered column={1} size="small" labelStyle={descriptionLabelStyle}>
-      <Descriptions.Item label="disconnect 次数">{diagnostic.skynetDisconnectCount}</Descriptions.Item>
-      <Descriptions.Item label="latency 统计次数">{diagnostic.latencyCount}</Descriptions.Item>
-      <Descriptions.Item label="平均延迟">{formatLatency(diagnostic.averageLatency)}</Descriptions.Item>
-    </Descriptions>
+    <>
+      {lineNumbers.map((lineNumber, index) => (
+        <React.Fragment key={`${lineNumber}-${index}`}>
+          {index > 0 ? "、" : null}
+          <Button type="link" size="small" style={{ padding: 0, height: "auto" }} onClick={() => onJumpToLine(lineNumber)}>
+            {lineNumber}
+          </Button>
+        </React.Fragment>
+      ))}
+    </>
   );
 };
 

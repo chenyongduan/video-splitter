@@ -39,6 +39,7 @@ export interface LogAnalysisResult {
 
 export interface RoomInfo {
   lineNumber: number;
+  lineNumbers: number[];
   roomId: string;
   startTime: unknown;
   endTime: unknown;
@@ -46,6 +47,7 @@ export interface RoomInfo {
   teacherNickname: string;
   teacherId: string;
   schoolId: string;
+  diagnostic: DiagnosticInfo;
 }
 
 export interface DiagnosticInfo {
@@ -64,13 +66,22 @@ export function analyzeLogText(text: string): LogAnalysisResult {
   const mobileDeviceInfo = extractMobileDeviceInfo(text);
   const initAnalyticInfo = extractFirstJson<InitAnalyticInfo>(text, INIT_ANALYTIC_MARKERS);
   const roomMatches = extractJsonMatches<Record<string, unknown>>(text, ROOM_MARKERS);
+  const roomOccurrences = roomMatches.map((match, index) => {
+    const nextMatch = roomMatches[index + 1];
+    const roomText = text.slice(match.markerIndex, nextMatch?.markerIndex ?? text.length);
+
+    return {
+      ...normalizeRoomInfo(match.value, getLineNumber(text, match.markerIndex)),
+      diagnostic: analyzeDiagnostics(roomText),
+    };
+  });
 
   return {
     device: mergeDeviceInfo(
       mobileDeviceInfo ?? (pcDeviceInfo ? { ...pcDeviceInfo, deviceType: "pc" } : null),
       initAnalyticInfo
     ),
-    rooms: dedupeRoomsByRoomId(roomMatches.map((match) => normalizeRoomInfo(match.value, getLineNumber(text, match.markerIndex)))),
+    rooms: mergeRoomsByRoomId(roomOccurrences),
     diagnostic: analyzeDiagnostics(text),
   };
 }
@@ -215,8 +226,8 @@ function extractFirstJsonMatch<T>(text: string, markers: string[]): { value: T; 
   return null;
 }
 
-function extractJsonMatches<T>(text: string, markers: string[]): Array<{ value: T; markerIndex: number }> {
-  const matches: Array<{ value: T; markerIndex: number }> = [];
+function extractJsonMatches<T>(text: string, markers: string[]): Array<{ value: T; markerIndex: number; endIndex: number }> {
+  const matches: Array<{ value: T; markerIndex: number; endIndex: number }> = [];
   const seenMarkerIndexes = new Set<number>();
 
   for (const marker of markers) {
@@ -299,6 +310,7 @@ function extractJsonAfterMarker<T>(
 function normalizeRoomInfo(room: Record<string, unknown>, lineNumber: number): RoomInfo {
   return {
     lineNumber,
+    lineNumbers: [lineNumber],
     roomId: stringifyFirst(room, ["roomId", "id", "room.id", "room.roomId"]),
     startTime: firstValue(room, ["beginAt", "startTime", "startAt", "start_time", "beginTime", "begin_time", "room.beginAt", "room.startTime"]),
     endTime: firstValue(room, ["endAt", "endTime", "end_time", "room.endAt", "room.endTime"]),
@@ -330,18 +342,65 @@ function normalizeRoomInfo(room: Record<string, unknown>, lineNumber: number): R
     ]),
     teacherId: stringifyFirst(room, ["teacherId", "teacher.id", "teacherInfo.id", "teacher.userId"]),
     schoolId: stringifyFirst(room, ["schoolId", "class.schoolId", "classInfo.schoolId", "room.schoolId"]),
+    diagnostic: {
+      skynetDisconnectCount: 0,
+      latencyCount: 0,
+      averageLatency: null,
+    },
   };
 }
 
-function dedupeRoomsByRoomId(rooms: RoomInfo[]): RoomInfo[] {
-  const seenRoomIds = new Set<string>();
+function mergeRoomsByRoomId(rooms: RoomInfo[]): RoomInfo[] {
+  const mergedRooms: RoomInfo[] = [];
+  const roomIndexById = new Map<string, number>();
 
-  return rooms.filter((room) => {
-    if (!room.roomId) return true;
-    if (seenRoomIds.has(room.roomId)) return false;
-    seenRoomIds.add(room.roomId);
-    return true;
-  });
+  for (const room of rooms) {
+    if (!room.roomId) {
+      mergedRooms.push(room);
+      continue;
+    }
+
+    const existingIndex = roomIndexById.get(room.roomId);
+    if (existingIndex === undefined) {
+      roomIndexById.set(room.roomId, mergedRooms.length);
+      mergedRooms.push(room);
+      continue;
+    }
+
+    mergedRooms[existingIndex] = mergeRoomInfo(mergedRooms[existingIndex], room);
+  }
+
+  return mergedRooms;
+}
+
+function mergeRoomInfo(base: RoomInfo, next: RoomInfo): RoomInfo {
+  return {
+    lineNumber: Math.min(base.lineNumber, next.lineNumber),
+    lineNumbers: [...base.lineNumbers, ...next.lineNumbers],
+    roomId: base.roomId || next.roomId,
+    startTime: base.startTime ?? next.startTime,
+    endTime: next.endTime ?? base.endTime,
+    originalEndTime: next.originalEndTime ?? base.originalEndTime,
+    teacherNickname: base.teacherNickname || next.teacherNickname,
+    teacherId: base.teacherId || next.teacherId,
+    schoolId: base.schoolId || next.schoolId,
+    diagnostic: mergeDiagnostics(base.diagnostic, next.diagnostic),
+  };
+}
+
+function mergeDiagnostics(base: DiagnosticInfo, next: DiagnosticInfo): DiagnosticInfo {
+  const latencyCount = base.latencyCount + next.latencyCount;
+  const latencyTotal = getLatencyTotal(base) + getLatencyTotal(next);
+
+  return {
+    skynetDisconnectCount: base.skynetDisconnectCount + next.skynetDisconnectCount,
+    latencyCount,
+    averageLatency: latencyCount > 0 ? latencyTotal / latencyCount : null,
+  };
+}
+
+function getLatencyTotal(diagnostic: DiagnosticInfo): number {
+  return diagnostic.averageLatency === null ? 0 : diagnostic.averageLatency * diagnostic.latencyCount;
 }
 
 function stringifyFirst(source: Record<string, unknown>, paths: string[]): string {
