@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Dropdown, Empty, Input, Modal, Space, Spin, Switch, Typography, message } from "antd";
-import { CheckOutlined, CopyOutlined, DownOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Empty, Input, Modal, Popover, Space, Spin, Switch, Typography, message } from "antd";
+import { CheckOutlined, CopyOutlined, DownOutlined, SettingOutlined } from "@ant-design/icons";
 import {
   DEFAULT_DEEPSEEK_MODEL,
+  fetchDeepSeekBalance,
   fetchDeepSeekModels,
   requestLogAiAnalysis,
   type AiChatMessage,
@@ -29,6 +30,9 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const [selectedModel, setSelectedModel] = useState<DeepSeekModel>(DEFAULT_DEEPSEEK_MODEL);
   const [modelOptions, setModelOptions] = useState<DeepSeekModel[]>([DEFAULT_DEEPSEEK_MODEL]);
   const [modelsLoading, setModelsLoading] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [balanceText, setBalanceText] = useState("--");
+  const [balanceLoading, setBalanceLoading] = useState(false);
   const [includeLogContext, setIncludeLogContext] = useState(false);
   const [hoveredMessageKey, setHoveredMessageKey] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -43,6 +47,9 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
       setSelectedModel(DEFAULT_DEEPSEEK_MODEL);
       setModelOptions([DEFAULT_DEEPSEEK_MODEL]);
       setModelsLoading(false);
+      setSettingsOpen(false);
+      setBalanceText("--");
+      setBalanceLoading(false);
       setIncludeLogContext(false);
       setHoveredMessageKey(null);
       return;
@@ -84,6 +91,21 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
       cancelled = true;
     };
   }, [open]);
+
+  const handleSettingsOpenChange = (nextOpen: boolean) => {
+    setSettingsOpen(nextOpen);
+    if (!nextOpen) return;
+
+    setBalanceLoading(true);
+    void fetchDeepSeekBalance()
+      .then((balance) => setBalanceText(balance))
+      .catch((error) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setBalanceText("--");
+        message.error(errorMessage);
+      })
+      .finally(() => setBalanceLoading(false));
+  };
 
   const handleSend = async () => {
     const question = inputValue.trim();
@@ -161,7 +183,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
           }}
         >
           {hasMessages ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {chatMessages.map((item, index) => {
                 const isUser = item.role === "user";
                 const messageKey = `${item.role}-${index}`;
@@ -309,6 +331,23 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
               <Switch checked={includeLogContext} onChange={setIncludeLogContext} />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Popover
+                open={settingsOpen}
+                onOpenChange={handleSettingsOpenChange}
+                trigger="click"
+                placement="topRight"
+                content={
+                  <div style={{ minWidth: 180, display: "flex", flexDirection: "column", gap: 12 }}>
+                    <Text strong>设置</Text>
+                    <Text>
+                      余额：
+                      {balanceLoading ? <Spin size="small" style={{ marginLeft: 4 }} /> : `${balanceText} 元`}
+                    </Text>
+                  </div>
+                }
+              >
+                <Button aria-label="设置" icon={<SettingOutlined />} />
+              </Popover>
               <Dropdown
                 placement="topLeft"
                 trigger={["click"]}

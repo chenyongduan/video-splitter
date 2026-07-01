@@ -1,5 +1,6 @@
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MODELS_API_URL = "https://api.deepseek.com/models";
+const DEEPSEEK_BALANCE_API_URL = "https://api.deepseek.com/user/balance";
 export const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY?.trim() ?? "";
 const DEEPSEEK_SYSTEM_PROMPT = "You are a helpful assistant specializing in log analysis.";
 
@@ -25,6 +26,16 @@ interface DeepSeekResponse {
 interface DeepSeekModelListResponse {
   data?: Array<{
     id?: string;
+  }>;
+  error?: {
+    message?: string;
+  };
+}
+
+interface DeepSeekBalanceResponse {
+  balance_infos?: Array<{
+    currency?: string;
+    total_balance?: string;
   }>;
   error?: {
     message?: string;
@@ -70,6 +81,34 @@ export async function fetchDeepSeekModels() {
   });
 
   return deduped;
+}
+
+export async function fetchDeepSeekBalance() {
+  ensureDeepSeekApiKey();
+
+  const response = await fetch(DEEPSEEK_BALANCE_API_URL, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+    },
+  });
+
+  const data = (await response.json()) as DeepSeekBalanceResponse;
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || `获取余额失败: ${response.status}`);
+  }
+
+  const balanceInfo =
+    data.balance_infos?.find((item) => item.currency === "CNY") ?? data.balance_infos?.find((item) => item.total_balance);
+
+  const balance = Number(balanceInfo?.total_balance);
+  if (!Number.isFinite(balance)) {
+    throw new Error("未获取到可用余额");
+  }
+
+  return balance.toFixed(2);
 }
 
 export async function requestLogAiAnalysis(
