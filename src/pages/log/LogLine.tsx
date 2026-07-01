@@ -134,6 +134,8 @@ const LogLine: React.FC<LogLineProps> = ({
           paddingLeft: 8,
           paddingRight: 8,
           lineHeight: `${LINE_HEIGHT}px`,
+          userSelect: "text",
+          WebkitUserSelect: "text",
         }}
       >
         {segments.map((s, i) =>

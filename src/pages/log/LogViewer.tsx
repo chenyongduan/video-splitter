@@ -439,6 +439,8 @@ const LogViewer = forwardRef<LogViewerHandle, LogViewerProps>(
           fontSize: LOG_FONT_SIZE,
           lineHeight: `${LINE_HEIGHT}px`,
           background: "#fff",
+          userSelect: "text",
+          WebkitUserSelect: "text",
         }}
       >
         <div style={{ position: "relative", height: geo.totalHeight }}>
