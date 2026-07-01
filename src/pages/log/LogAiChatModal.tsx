@@ -228,54 +228,55 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "flex-end",
-                          gap: 8,
                         }}
                       >
-                        {isUser ? (
-                          <>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              <span style={{ visibility: showCopyButton ? "visible" : "hidden" }}>
+                        <div
+                          style={{
+                            display: showCopyButton ? "flex" : "none",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          {isUser ? (
+                            <>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
                                 {item.timeLabel}
-                              </span>
-                            </Text>
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<CopyOutlined />}
-                              onClick={() => void handleCopyMessage(item.content)}
-                              style={{
-                                width: 24,
-                                minWidth: 24,
-                                height: 24,
-                                padding: 0,
-                                color: "#666",
-                                visibility: showCopyButton ? "visible" : "hidden",
-                              }}
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<CopyOutlined />}
-                              onClick={() => void handleCopyMessage(item.content)}
-                              style={{
-                                width: 24,
-                                minWidth: 24,
-                                height: 24,
-                                padding: 0,
-                                color: "#666",
-                                visibility: showCopyButton ? "visible" : "hidden",
-                              }}
-                            />
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              <span style={{ visibility: showCopyButton ? "visible" : "hidden" }}>
+                              </Text>
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<CopyOutlined />}
+                                onClick={() => void handleCopyMessage(item.content)}
+                                style={{
+                                  width: 24,
+                                  minWidth: 24,
+                                  height: 24,
+                                  padding: 0,
+                                  color: "#666",
+                                }}
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<CopyOutlined />}
+                                onClick={() => void handleCopyMessage(item.content)}
+                                style={{
+                                  width: 24,
+                                  minWidth: 24,
+                                  height: 24,
+                                  padding: 0,
+                                  color: "#666",
+                                }}
+                              />
+                              <Text type="secondary" style={{ fontSize: 12 }}>
                                 {item.timeLabel}
-                              </span>
-                            </Text>
-                          </>
-                        )}
+                              </Text>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
