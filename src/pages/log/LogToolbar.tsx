@@ -1,14 +1,16 @@
 import React from "react";
 import { Button, Space, Tooltip, Typography } from "antd";
-import { BarChartOutlined, CloseOutlined, FolderOpenOutlined, SearchOutlined } from "@ant-design/icons";
+import { BarChartOutlined, CloseOutlined, FolderOpenOutlined, RobotOutlined, SearchOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
 interface LogToolbarProps {
   lineCount: number;
   active?: boolean;
+  hasLogContent?: boolean;
   onOpenSearch: () => void;
   onAnalyze: () => void;
+  onAiAnalyze: () => void;
   onClose: () => void;
   onOpenFile: () => void;
 }
@@ -16,8 +18,10 @@ interface LogToolbarProps {
 const LogToolbar: React.FC<LogToolbarProps> = ({
   lineCount,
   active = true,
+  hasLogContent = true,
   onOpenSearch,
   onAnalyze,
+  onAiAnalyze,
   onClose,
   onOpenFile,
 }) => {
@@ -45,16 +49,21 @@ const LogToolbar: React.FC<LogToolbarProps> = ({
           </Button>
         </Tooltip>
         <Tooltip title="搜索 (Ctrl/Cmd+F)" open={active ? undefined : false}>
-          <Button icon={<SearchOutlined />} onClick={onOpenSearch}>
+          <Button icon={<SearchOutlined />} onClick={onOpenSearch} disabled={!hasLogContent}>
             搜索
           </Button>
         </Tooltip>
         <Tooltip title="分析日志内容" open={active ? undefined : false}>
-          <Button icon={<BarChartOutlined />} onClick={onAnalyze}>
+          <Button icon={<BarChartOutlined />} onClick={onAnalyze} disabled={!hasLogContent}>
             分析
           </Button>
         </Tooltip>
-        <Button icon={<CloseOutlined />} danger onClick={onClose}>
+        <Tooltip title="使用 AI 分析日志" open={active ? undefined : false}>
+          <Button icon={<RobotOutlined />} onClick={onAiAnalyze}>
+            AI 分析
+          </Button>
+        </Tooltip>
+        <Button icon={<CloseOutlined />} danger onClick={onClose} disabled={!hasLogContent}>
           关闭
         </Button>
       </Space>

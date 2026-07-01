@@ -8,6 +8,7 @@ import SearchBar from "../../components/SearchBar";
 import LogViewer, { type LogViewerHandle } from "./LogViewer";
 import LogErrorBoundary from "./LogErrorBoundary";
 import LogAnalysisModal from "./LogAnalysisModal";
+import LogAiChatModal from "./LogAiChatModal";
 import { useLogSearch } from "./useLogSearch";
 import { analyzeLogText, type LogAnalysisResult } from "./logAnalysis";
 import { useAppStore } from "../../store/segmentStore";
@@ -28,6 +29,7 @@ const LogPage: React.FC<LogPageProps> = ({ active = true }) => {
   const search = useLogSearch(lines);
   const viewerRef = useRef<LogViewerHandle>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [aiAnalysisOpen, setAiAnalysisOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<LogAnalysisResult>({
     device: null,
     rooms: [],
@@ -138,6 +140,21 @@ const LogPage: React.FC<LogPageProps> = ({ active = true }) => {
   if (!loaded) {
     return (
       <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+        <LogToolbar
+          lineCount={0}
+          active={active}
+          hasLogContent={false}
+          onOpenSearch={handleOpenSearch}
+          onAnalyze={handleAnalyze}
+          onAiAnalyze={() => setAiAnalysisOpen(true)}
+          onClose={clearLog}
+          onOpenFile={handleOpenFile}
+        />
+        <LogAiChatModal
+          open={aiAnalysisOpen}
+          logText={logText}
+          onClose={() => setAiAnalysisOpen(false)}
+        />
         <LogDropZone onOpenFile={openLogFile} onPickFile={handleOpenFile} />
       </div>
     );
@@ -148,16 +165,24 @@ const LogPage: React.FC<LogPageProps> = ({ active = true }) => {
       <LogToolbar
         lineCount={lines.length}
         active={active}
+        hasLogContent={loaded}
         onOpenSearch={handleOpenSearch}
         onAnalyze={handleAnalyze}
+        onAiAnalyze={() => setAiAnalysisOpen(true)}
         onClose={clearLog}
         onOpenFile={handleOpenFile}
       />
       <LogAnalysisModal
         open={analysisOpen}
         result={analysisResult}
+        lines={lines}
         onClose={() => setAnalysisOpen(false)}
         onJumpToLine={handleJumpToLine}
+      />
+      <LogAiChatModal
+        open={aiAnalysisOpen}
+        logText={logText}
+        onClose={() => setAiAnalysisOpen(false)}
       />
       <LogErrorBoundary>
         <div

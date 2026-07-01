@@ -1,5 +1,6 @@
 import React from "react";
-import { Button, Descriptions, Empty, Modal, Tabs, Typography } from "antd";
+import { Button, Descriptions, Empty, Modal, Space, Tabs, Typography, message } from "antd";
+import { CopyOutlined } from "@ant-design/icons";
 import type { DeviceInfo, LogAnalysisResult, RoomInfo } from "./logAnalysis";
 import { formatTimestamp, tryParseTimestamp } from "../../utils/timestamp";
 
@@ -13,11 +14,12 @@ const descriptionLabelStyle: React.CSSProperties = {
 interface LogAnalysisModalProps {
   open: boolean;
   result: LogAnalysisResult;
+  lines: string[];
   onClose: () => void;
   onJumpToLine: (lineNumber: number) => void;
 }
 
-const LogAnalysisModal: React.FC<LogAnalysisModalProps> = ({ open, result, onClose, onJumpToLine }) => {
+const LogAnalysisModal: React.FC<LogAnalysisModalProps> = ({ open, result, lines, onClose, onJumpToLine }) => {
   return (
     <Modal
       open={open}
@@ -36,7 +38,7 @@ const LogAnalysisModal: React.FC<LogAnalysisModalProps> = ({ open, result, onClo
             children: (
               <div style={{ paddingTop: 16 }}>
                 {result.rooms.length > 0 ? (
-                  <RoomPanel rooms={result.rooms} onJumpToLine={onJumpToLine} />
+                  <RoomPanel rooms={result.rooms} lines={lines} onJumpToLine={onJumpToLine} />
                 ) : (
                   <Empty description="未匹配到房间信息" />
                 )}
@@ -110,7 +112,37 @@ const DevicePanel: React.FC<{ device: DeviceInfo }> = ({ device }) => {
   );
 };
 
-const RoomPanel: React.FC<{ rooms: RoomInfo[]; onJumpToLine: (lineNumber: number) => void }> = ({ rooms, onJumpToLine }) => {
+const RoomPanel: React.FC<{ rooms: RoomInfo[]; lines: string[]; onJumpToLine: (lineNumber: number) => void }> = ({
+  rooms,
+  lines,
+  onJumpToLine,
+}) => {
+  const handleCopyRoomLogs = async (roomIndex: number) => {
+    const startLineNumber = rooms[roomIndex]?.lineNumber;
+    if (!startLineNumber || startLineNumber < 1) {
+      message.warning("当前房间缺少可复制的起始行");
+      return;
+    }
+
+    const nextStartLineNumber = rooms[roomIndex + 1]?.lineNumber;
+    const startIndex = startLineNumber - 1;
+    const endIndex = nextStartLineNumber ? Math.max(startIndex + 1, nextStartLineNumber - 1) : lines.length;
+    const content = lines.slice(startIndex, endIndex).join("\n").trimEnd();
+
+    if (!content) {
+      message.warning("当前房间没有可复制的日志内容");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(content);
+      message.success("复制成功");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      message.error(`复制失败: ${errorMessage}`);
+    }
+  };
+
   return (
     <div style={{ maxHeight: 520, overflow: "auto", paddingRight: 4 }}>
       {rooms.map((room, index) => (
@@ -120,7 +152,18 @@ const RoomPanel: React.FC<{ rooms: RoomInfo[]; onJumpToLine: (lineNumber: number
           column={{ xs: 1, sm: 1, md: 2 }}
           size="small"
           labelStyle={descriptionLabelStyle}
-          title={`房间 ${index + 1}`}
+          title={
+            <Space size={8}>
+              <span>{`房间 ${index + 1}`}</span>
+              <Button
+                type="text"
+                size="small"
+                icon={<CopyOutlined />}
+                onClick={() => void handleCopyRoomLogs(index)}
+                aria-label={`复制房间 ${index + 1} 日志`}
+              />
+            </Space>
+          }
           style={{ marginBottom: index === rooms.length - 1 ? 0 : 16 }}
         >
           <Descriptions.Item label="日志行数">
