@@ -12,10 +12,43 @@ export interface AiChatMessage {
   content: string;
 }
 
-interface DeepSeekResponse {
+/** Tool call as returned by the model. */
+export interface ToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+/** A function definition sent to the model so it can decide which tool to call. */
+export interface ToolDefinition {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: object;
+  };
+}
+
+/** Chat message in the OpenAI/DeepSeek shape (covers system/user/assistant/tool + tool-use fields). */
+export interface ChatMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+}
+
+/** Raw assistant message returned by chatCompletion (may carry tool_calls instead of content). */
+export interface AssistantMessage {
+  role: "assistant";
+  content: string | null;
+  tool_calls?: ToolCall[];
+}
+
+interface DeepSeekChatResponse {
   choices?: Array<{
     message?: {
-      content?: string;
+      content?: string | null;
+      tool_calls?: ToolCall[];
     };
   }>;
   error?: {
@@ -111,26 +144,53 @@ export async function fetchDeepSeekBalance() {
   return balance.toFixed(2);
 }
 
-export async function requestLogAiAnalysis(
-  logText: string,
-  messages: AiChatMessage[],
-  model: DeepSeekModel,
-  includeLogContext: boolean
-) {
+export interface ChatCompletionOptions {
+  model: DeepSeekModel;
+  messages: ChatMessage[];
+  tools?: ToolDefinition[];
+  toolChoice?: "auto" | "none";
+  signal?: AbortSignal;
+}
+
+/**
+ * Low-level chat completion. Returns the raw assistant message so callers can
+ * inspect tool_calls and drive a tool-use loop. When tools are supplied, the
+ * reasoning params (thinking/reasoning_effort) are omitted because they can
+ * conflict with tool-use on some DeepSeek models.
+ */
+export async function chatCompletion({
+  model,
+  messages,
+  tools,
+  toolChoice,
+  signal,
+}: ChatCompletionOptions): Promise<AssistantMessage> {
   ensureDeepSeekApiKey();
 
-  const requestMessages = [
-    {
-      content: DEEPSEEK_SYSTEM_PROMPT,
-      role: "system",
-    },
-  ];
+  const useTools = Boolean(tools && tools.length > 0);
 
-  if (includeLogContext) {
-    requestMessages.push({
-      content: `以下是当前要分析的完整日志内容，请结合日志回答后续问题：\n\n${logText}`,
-      role: "user",
-    });
+  const body: Record<string, unknown> = {
+    messages,
+    model,
+    max_tokens: 4096,
+    response_format: { type: "text" },
+    stop: null,
+    stream: false,
+    stream_options: null,
+    temperature: 1,
+    top_p: 1,
+    logprobs: false,
+    top_logprobs: null,
+  };
+
+  if (useTools) {
+    body.tools = tools;
+    body.tool_choice = toolChoice ?? "auto";
+  } else {
+    body.thinking = { type: "enabled" };
+    body.reasoning_effort = "high";
+    body.tools = null;
+    body.tool_choice = "none";
   }
 
   const response = await fetch(DEEPSEEK_API_URL, {
@@ -140,39 +200,52 @@ export async function requestLogAiAnalysis(
       Accept: "application/json",
       Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
     },
-    body: JSON.stringify({
-      messages: [...requestMessages, ...messages],
-      model,
-      thinking: {
-        type: "enabled",
-      },
-      reasoning_effort: "high",
-      max_tokens: 4096,
-      response_format: {
-        type: "text",
-      },
-      stop: null,
-      stream: false,
-      stream_options: null,
-      temperature: 1,
-      top_p: 1,
-      tools: null,
-      tool_choice: "none",
-      logprobs: false,
-      top_logprobs: null,
-    }),
+    body: JSON.stringify(body),
+    signal,
   });
 
-  const data = (await response.json()) as DeepSeekResponse;
+  const data = (await response.json()) as DeepSeekChatResponse;
 
   if (!response.ok) {
     throw new Error(data.error?.message || `AI 请求失败: ${response.status}`);
   }
 
-  const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) {
+  const message = data.choices?.[0]?.message;
+  if (!message) {
     throw new Error("AI 未返回可用内容");
   }
 
-  return content;
+  return {
+    role: "assistant",
+    content: message.content?.trim() ?? null,
+    tool_calls: message.tool_calls,
+  };
+}
+
+/**
+ * Plain text chat (backward-compatible). Builds the system + optional log
+ * context + history, then returns the assistant text. Tool-use is disabled.
+ */
+export async function requestLogAiAnalysis(
+  logText: string,
+  messages: AiChatMessage[],
+  model: DeepSeekModel,
+  includeLogContext: boolean
+) {
+  const requestMessages: ChatMessage[] = [{ role: "system", content: DEEPSEEK_SYSTEM_PROMPT }];
+
+  if (includeLogContext) {
+    requestMessages.push({
+      role: "user",
+      content: `以下是当前要分析的完整日志内容，请结合日志回答后续问题：\n\n${logText}`,
+    });
+  }
+
+  requestMessages.push(...messages);
+
+  const assistant = await chatCompletion({ model, messages: requestMessages });
+  if (!assistant.content) {
+    throw new Error("AI 未返回可用内容");
+  }
+  return assistant.content;
 }

@@ -9,6 +9,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_http::init())
         .manage(Mutex::new(json_editor::JsonEditorState::default()))
         .invoke_handler(tauri::generate_handler![
             json_editor::json_open_file,

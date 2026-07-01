@@ -5,16 +5,29 @@ import {
   DEFAULT_DEEPSEEK_MODEL,
   fetchDeepSeekBalance,
   fetchDeepSeekModels,
-  requestLogAiAnalysis,
   type AiChatMessage,
+  type ChatMessage,
   type DeepSeekModel,
 } from "./aiClient";
+import { getKidToken, setKidToken as persistKidToken } from "./kidApi";
+import { runChatWithTools, type ToolResultEntry } from "./chatController";
+import StructuredData from "./StructuredData";
 
 const { Text } = Typography;
 const { TextArea } = Input;
 
+const TOOL_LABELS: Record<string, string> = {
+  query_room: "房间信息",
+  list_misc: "公共枚举",
+  search_student: "学生搜索",
+  list_student_appointments: "学生预约",
+  query_device: "设备信息",
+  list_teacher_appointments: "老师排课",
+};
+
 interface DisplayChatMessage extends AiChatMessage {
   timeLabel: string;
+  toolResults?: ToolResultEntry[];
 }
 
 interface LogAiChatModalProps {
@@ -34,6 +47,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const [balanceText, setBalanceText] = useState("--");
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [includeLogContext, setIncludeLogContext] = useState(false);
+  const [kidToken, setKidTokenInput] = useState(() => getKidToken());
   const [hoveredMessageKey, setHoveredMessageKey] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -120,15 +134,21 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     setSubmitting(true);
 
     try {
-      const reply = await requestLogAiAnalysis(
+      const history: ChatMessage[] = nextMessages.map(({ role, content }) => ({ role, content }));
+      const { content, toolResults } = await runChatWithTools(selectedModel, history, {
+        includeLogContext,
         logText,
-        nextMessages.map(({ role, content }) => ({ role, content })),
-        selectedModel,
-        includeLogContext
-      );
+      });
+      const replyText =
+        content.trim() || (toolResults.length ? "已查询到以下数据：" : "AI 未返回可用内容");
       setChatMessages([
         ...nextMessages,
-        { role: "assistant", content: reply, timeLabel: formatTimeLabel(new Date()) },
+        {
+          role: "assistant",
+          content: replyText,
+          timeLabel: formatTimeLabel(new Date()),
+          toolResults: toolResults.length ? toolResults : undefined,
+        },
       ]);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -222,6 +242,17 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                       >
                         {item.content}
                       </div>
+                      {item.toolResults?.map((toolResult, toolIndex) => (
+                        <div
+                          key={toolIndex}
+                          style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: "100%" }}
+                        >
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            {TOOL_LABELS[toolResult.toolName] ?? toolResult.toolName}
+                          </Text>
+                          <StructuredData data={toolResult.data} />
+                        </div>
+                      ))}
                       <div
                         style={{
                           minHeight: 24,
@@ -338,12 +369,24 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                 trigger="click"
                 placement="topRight"
                 content={
-                  <div style={{ minWidth: 180, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ minWidth: 240, display: "flex", flexDirection: "column", gap: 12 }}>
                     <Text strong>设置</Text>
                     <Text>
                       余额：
                       {balanceLoading ? <Spin size="small" style={{ marginLeft: 4 }} /> : `${balanceText} 元`}
                     </Text>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <Text type="secondary">97kid Token</Text>
+                      <Input.Password
+                        value={kidToken}
+                        size="small"
+                        placeholder="粘贴 Bearer Token"
+                        onChange={(event) => {
+                          setKidTokenInput(event.target.value);
+                          persistKidToken(event.target.value);
+                        }}
+                      />
+                    </div>
                   </div>
                 }
               >
