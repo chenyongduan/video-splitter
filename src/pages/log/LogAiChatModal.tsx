@@ -13,6 +13,7 @@ import { getKidToken, setKidToken as persistKidToken } from "./kidApi";
 import { runChatWithTools } from "./chatController";
 import { isAbortError } from "./abortError";
 import { formatAnalysisElapsed } from "./analysisElapsed";
+import { isImeComposing, shouldSubmitOnEnter } from "./imeInput";
 import {
   addInputHistory,
   getNextHistoryCursor,
@@ -53,6 +54,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeControllerRef = useRef<AbortController | null>(null);
   const analysisStartedAtRef = useRef<number | null>(null);
+  const isComposingRef = useRef(false);
 
   const hasMessages = chatMessages.length > 0;
   const canSubmit = submitting || inputValue.trim().length > 0;
@@ -227,6 +229,8 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   };
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isImeComposing(event, isComposingRef.current)) return;
+
     if (event.key === "ArrowUp") {
       if (!isCursorOnFirstLine(inputValue, event.currentTarget.selectionStart)) return;
 
@@ -431,10 +435,16 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
             value={inputValue}
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
+            onCompositionStart={() => {
+              isComposingRef.current = true;
+            }}
+            onCompositionEnd={() => {
+              isComposingRef.current = false;
+            }}
             placeholder="输入你想让 AI 分析的问题，例如：帮我判断断线原因"
             autoSize={{ minRows: 3, maxRows: 6 }}
             onPressEnter={(event) => {
-              if (event.shiftKey) return;
+              if (!shouldSubmitOnEnter(event, isComposingRef.current)) return;
               event.preventDefault();
               void handleSend();
             }}
