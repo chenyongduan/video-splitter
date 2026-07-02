@@ -24,6 +24,12 @@ export function setKidToken(value: string): void {
 
 const cacheBuster = () => `__t__=${Date.now()}`;
 
+const withCacheBuster = (params: URLSearchParams): URLSearchParams => {
+  const [key, value] = cacheBuster().split("=");
+  params.set(key, value);
+  return params;
+};
+
 async function kidGet(pathAndQuery: string): Promise<unknown> {
   const token = getKidToken();
   if (!token) {
@@ -70,6 +76,42 @@ export async function fetchStudents(query: string): Promise<unknown> {
 
 export async function fetchStudentAppointments(studentId: number): Promise<unknown> {
   return kidGet(`/schools/students/appointments?${cacheBuster()}&studentId=${studentId}&page=1&pageSize=20`);
+}
+
+export async function fetchStudentProducts(
+  studentId: number,
+  appId?: number,
+  page = 1,
+  pageSize = 10
+): Promise<unknown> {
+  const params = withCacheBuster(new URLSearchParams({ page: String(page), pageSize: String(pageSize) }));
+  if (appId != null) {
+    params.set("appId", String(appId));
+  }
+  return kidGet(`/students/${studentId}/products?${params.toString()}`);
+}
+
+export async function fetchProduct(productId: number): Promise<unknown> {
+  return kidGet(`/products/${productId}?${cacheBuster()}`);
+}
+
+export async function fetchStudentBills(
+  studentId: number,
+  appId?: number,
+  page = 1,
+  pageSize = 15
+): Promise<unknown> {
+  const params = withCacheBuster(
+    new URLSearchParams({
+      studentId: String(studentId),
+      page: String(page),
+      pageSize: String(pageSize),
+    })
+  );
+  if (appId != null) {
+    params.set("appId", String(appId));
+  }
+  return kidGet(`/bills?${params.toString()}`);
 }
 
 export async function fetchDeviceInfo(
@@ -208,6 +250,156 @@ export const KID_TOOLS: KidTool[] = [
             endAt: sch.endAt,
             roomTypeV2Name: sch.roomTypeV2Name,
             courseId: sch.courseId,
+          };
+        }),
+      };
+    },
+  },
+  {
+    name: "list_student_products",
+    description: "查询某学生已有产品列表。appId 可选，只有问题或日志能明确应用时才传；不确定则不传。",
+    params: {
+      type: "object",
+      properties: {
+        studentId: { type: "number", description: "学生 id" },
+        appId: { type: "number", description: "可选，按应用过滤；不确定则不传" },
+        page: { type: "number", description: "可选，页码，默认 1" },
+        pageSize: { type: "number", description: "可选，每页数量，默认 10" },
+      },
+      required: ["studentId"],
+    },
+    execute: (args) => {
+      const studentId = Number(args.studentId);
+      const appId = args.appId == null ? undefined : Number(args.appId);
+      const page = args.page == null ? 1 : Number(args.page);
+      const pageSize = args.pageSize == null ? 10 : Number(args.pageSize);
+      return fetchStudentProducts(studentId, appId, page, pageSize);
+    },
+    summarizeForModel: (result) => {
+      const r = asObj(result);
+      return {
+        total: r.total,
+        page: r.page,
+        pageSize: r.pageSize,
+        result: (Array.isArray(r.result) ? r.result : []).map((product) => {
+          const o = asObj(product);
+          return {
+            id: o.id,
+            studentId: o.studentId,
+            productId: o.productId,
+            name: o.name,
+            lessonCount: o.lessonCount,
+            lessonCountLeft: o.lessonCountLeft,
+            lessonCountUsed: o.lessonCountUsed,
+            lessonCountFrozen: o.lessonCountFrozen,
+            sessionCount: o.sessionCount,
+            sessionCountLeft: o.sessionCountLeft,
+            sessionCountUsed: o.sessionCountUsed,
+            sessionCountFrozen: o.sessionCountFrozen,
+            validStartAt: o.validStartAt,
+            validFinishAt: o.validFinishAt,
+            status: o.status,
+            billingType: o.billingType,
+            buyingType: o.buyingType,
+            price: o.price,
+            actualPrice: o.actualPrice,
+            unitPrice: o.unitPrice,
+            appId: o.appId,
+            businessEntityId: o.businessEntityId,
+            roomTypeId: o.roomTypeId,
+            productType: o.productType,
+            hidden: o.hidden,
+            remarks: o.remarks,
+          };
+        }),
+      };
+    },
+  },
+  {
+    name: "query_product",
+    description: "根据 productId 查询产品详情（课时、价格、有效期规则、班型、应用、业务、售卖区域等）。",
+    params: {
+      type: "object",
+      properties: { productId: { type: "number", description: "产品 id，例如 4279" } },
+      required: ["productId"],
+    },
+    execute: (args) => fetchProduct(Number(args.productId)),
+    summarizeForModel: (result) => {
+      const r = asObj(result);
+      return {
+        id: r.id,
+        name: r.name,
+        billingType: r.billingType,
+        price: r.price,
+        lessonCount: r.lessonCount,
+        sessionsPerLesson: r.sessionsPerLesson,
+        lessonValidityType: r.lessonValidityType,
+        lessonLifeTime: r.lessonLifeTime,
+        buyingType: r.buyingType,
+        published: r.published,
+        trial: r.trial,
+        productType: r.productType,
+        roomTypeId: r.roomTypeId,
+        roomTypeV2Id: r.roomTypeV2Id,
+        appId: r.appId,
+        businessEntityId: r.businessEntityId,
+        deferrable: r.deferrable,
+        refundableType: r.refundableType,
+        currencyCode: r.currencyCode,
+        hidden: r.hidden,
+        remarks: r.remarks,
+        buyingStartDate: r.buyingStartDate,
+        buyingEndDate: r.buyingEndDate,
+        attachedProducts: Array.isArray(r.attachedProducts) ? r.attachedProducts : [],
+        saleAreas: r.saleAreas,
+        tags: Array.isArray(r.tags) ? r.tags : [],
+      };
+    },
+  },
+  {
+    name: "list_student_bills",
+    description: "查询某学生订单列表。appId 可选，只有问题或日志能明确应用时才传；不确定则不传。",
+    params: {
+      type: "object",
+      properties: {
+        studentId: { type: "number", description: "学生 id" },
+        appId: { type: "number", description: "可选，按应用过滤；不确定则不传" },
+        page: { type: "number", description: "可选，页码，默认 1" },
+        pageSize: { type: "number", description: "可选，每页数量，默认 15" },
+      },
+      required: ["studentId"],
+    },
+    execute: (args) => {
+      const studentId = Number(args.studentId);
+      const appId = args.appId == null ? undefined : Number(args.appId);
+      const page = args.page == null ? 1 : Number(args.page);
+      const pageSize = args.pageSize == null ? 15 : Number(args.pageSize);
+      return fetchStudentBills(studentId, appId, page, pageSize);
+    },
+    summarizeForModel: (result) => {
+      const r = asObj(result);
+      return {
+        total: r.total,
+        page: r.page,
+        pageSize: r.pageSize,
+        result: (Array.isArray(r.result) ? r.result : []).map((bill) => {
+          const o = asObj(bill);
+          return {
+            id: o.id,
+            name: o.name,
+            productId: o.productId,
+            price: o.price,
+            actualPrice: o.actualPrice,
+            studentId: o.studentId,
+            buyingStudentId: o.buyingStudentId,
+            status: o.status,
+            paidAt: o.paidAt,
+            createdAt: o.createdAt,
+            payChannel: o.payChannel,
+            currencyCode: o.currencyCode,
+            appId: o.appId,
+            payEnv: o.payEnv,
+            attachedBills: Array.isArray(o.attachedBills) ? o.attachedBills : [],
           };
         }),
       };

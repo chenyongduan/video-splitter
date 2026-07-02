@@ -21,6 +21,9 @@ const TOOL_LABELS: Record<string, string> = {
   list_misc: "公共枚举",
   search_student: "学生搜索",
   list_student_appointments: "学生预约",
+  list_student_products: "学生产品",
+  query_product: "产品详情",
+  list_student_bills: "学生订单",
   query_device: "设备信息",
   list_teacher_appointments: "老师排课",
 };
