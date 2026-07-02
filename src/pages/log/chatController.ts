@@ -15,6 +15,7 @@ export interface ChatTurnResult {
 interface RunOptions {
   includeLogContext: boolean;
   logText: string;
+  signal?: AbortSignal;
 }
 
 const MAX_TOOL_ROUNDS = 5;
@@ -67,6 +68,7 @@ export async function runChatWithTools(
       messages,
       tools,
       toolChoice: isLastRound ? "none" : "auto",
+      signal: opts.signal,
     });
     messages.push(assistant);
 
@@ -87,7 +89,7 @@ export async function runChatWithTools(
 
       const args = safeParseArgs(call.function.arguments);
       try {
-        const result = await tool.execute(args);
+        const result = await tool.execute(args, opts.signal);
         const summary = tool.summarizeForModel ? tool.summarizeForModel(result) : result;
         messages.push({
           role: "tool",

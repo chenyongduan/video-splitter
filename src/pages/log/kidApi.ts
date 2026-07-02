@@ -30,7 +30,7 @@ const withCacheBuster = (params: URLSearchParams): URLSearchParams => {
   return params;
 };
 
-async function kidGet(pathAndQuery: string): Promise<unknown> {
+async function kidGet(pathAndQuery: string, signal?: AbortSignal): Promise<unknown> {
   const token = getKidToken();
   if (!token) {
     throw new Error("请先在设置中配置 97kid Token");
@@ -43,6 +43,7 @@ async function kidGet(pathAndQuery: string): Promise<unknown> {
       authorization: `Bearer ${token}`,
       referer: KID_REFERER,
     },
+    signal,
   });
 
   let data: unknown = null;
@@ -62,44 +63,46 @@ async function kidGet(pathAndQuery: string): Promise<unknown> {
 
 /* ----------------------------- 底层 fetch 函数 ---------------------------- */
 
-export async function fetchRoom(roomId: number): Promise<unknown> {
-  return kidGet(`/rooms/${roomId}?${cacheBuster()}`);
+export async function fetchRoom(roomId: number, signal?: AbortSignal): Promise<unknown> {
+  return kidGet(`/rooms/${roomId}?${cacheBuster()}`, signal);
 }
 
-export async function fetchBusinessEntitiesAndMisc(): Promise<unknown> {
-  return kidGet(`/businessEntitiesAndMisc?${cacheBuster()}`);
+export async function fetchBusinessEntitiesAndMisc(signal?: AbortSignal): Promise<unknown> {
+  return kidGet(`/businessEntitiesAndMisc?${cacheBuster()}`, signal);
 }
 
-export async function fetchStudent(studentId: number): Promise<unknown> {
-  return kidGet(`/students/${studentId}?${cacheBuster()}`);
+export async function fetchStudent(studentId: number, signal?: AbortSignal): Promise<unknown> {
+  return kidGet(`/students/${studentId}?${cacheBuster()}`, signal);
 }
 
-export async function fetchStudentAppointments(studentId: number): Promise<unknown> {
-  return kidGet(`/schools/students/appointments?${cacheBuster()}&studentId=${studentId}&page=1&pageSize=20`);
+export async function fetchStudentAppointments(studentId: number, signal?: AbortSignal): Promise<unknown> {
+  return kidGet(`/schools/students/appointments?${cacheBuster()}&studentId=${studentId}&page=1&pageSize=20`, signal);
 }
 
 export async function fetchStudentProducts(
   studentId: number,
   appId?: number,
   page = 1,
-  pageSize = 10
+  pageSize = 10,
+  signal?: AbortSignal
 ): Promise<unknown> {
   const params = withCacheBuster(new URLSearchParams({ page: String(page), pageSize: String(pageSize) }));
   if (appId != null) {
     params.set("appId", String(appId));
   }
-  return kidGet(`/students/${studentId}/products?${params.toString()}`);
+  return kidGet(`/students/${studentId}/products?${params.toString()}`, signal);
 }
 
-export async function fetchProduct(productId: number): Promise<unknown> {
-  return kidGet(`/products/${productId}?${cacheBuster()}`);
+export async function fetchProduct(productId: number, signal?: AbortSignal): Promise<unknown> {
+  return kidGet(`/products/${productId}?${cacheBuster()}`, signal);
 }
 
 export async function fetchStudentBills(
   studentId: number,
   appId?: number,
   page = 1,
-  pageSize = 15
+  pageSize = 15,
+  signal?: AbortSignal
 ): Promise<unknown> {
   const params = withCacheBuster(
     new URLSearchParams({
@@ -111,20 +114,21 @@ export async function fetchStudentBills(
   if (appId != null) {
     params.set("appId", String(appId));
   }
-  return kidGet(`/bills?${params.toString()}`);
+  return kidGet(`/bills?${params.toString()}`, signal);
 }
 
 export async function fetchDeviceInfo(
   roomId: number,
   role: "teacher" | "student",
-  userId: number
+  userId: number,
+  signal?: AbortSignal
 ): Promise<unknown> {
-  return kidGet(`/deviceInfo/rooms/${roomId}/device?${cacheBuster()}&role=${role}&userId=${userId}`);
+  return kidGet(`/deviceInfo/rooms/${roomId}/device?${cacheBuster()}&role=${role}&userId=${userId}`, signal);
 }
 
-export async function fetchTeacherAppointments(teacherId: number, appId?: number): Promise<unknown> {
+export async function fetchTeacherAppointments(teacherId: number, appId?: number, signal?: AbortSignal): Promise<unknown> {
   const appIdParam = appId != null ? `&appId=${appId}` : "";
-  return kidGet(`/teacherAppointments?${cacheBuster()}&teacherId=${teacherId}${appIdParam}&page=1&pageSize=20`);
+  return kidGet(`/teacherAppointments?${cacheBuster()}&teacherId=${teacherId}${appIdParam}&page=1&pageSize=20`, signal);
 }
 
 /* --------------------------- 声明式工具注册表 --------------------------- */
@@ -138,7 +142,7 @@ export interface KidTool {
   /** 进 LLM（JSON Schema，用于提参） */
   params: object;
   /** 前端实际请求 */
-  execute: (args: Record<string, unknown>) => Promise<unknown>;
+  execute: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>;
   /** 回灌 LLM 的裁剪版（省 token）。完整 result 仅用于渲染，不进 LLM。 */
   summarizeForModel?: (result: unknown) => unknown;
 }
@@ -156,7 +160,7 @@ export const KID_TOOLS: KidTool[] = [
       properties: { roomId: { type: "number", description: "房间 id，例如 52351813" } },
       required: ["roomId"],
     },
-    execute: (args) => fetchRoom(Number(args.roomId)),
+    execute: (args, signal) => fetchRoom(Number(args.roomId), signal),
     summarizeForModel: (result) => {
       const r = asObj(result);
       const schedule = asObj(r.schedule);
@@ -179,7 +183,7 @@ export const KID_TOOLS: KidTool[] = [
     name: "list_misc",
     description: "查询公共枚举：业务(businessEntities)、班型(roomTypes)、地区(locations)、教师语言(teacherLanguageDetails)、应用(apps)、课时时长(roomDurations)。",
     params: { type: "object", properties: {} },
-    execute: () => fetchBusinessEntitiesAndMisc(),
+    execute: (_args, signal) => fetchBusinessEntitiesAndMisc(signal),
     summarizeForModel: (result) => {
       const r = asObj(result);
       const compress = (arr: unknown, labelKey = "nameCN", idKey = "id"): Record<string, unknown> => {
@@ -209,7 +213,7 @@ export const KID_TOOLS: KidTool[] = [
       properties: { studentId: { type: "number", description: "学生 id，例如 263288" } },
       required: ["studentId"],
     },
-    execute: (args) => fetchStudent(Number(args.studentId)),
+    execute: (args, signal) => fetchStudent(Number(args.studentId), signal),
     summarizeForModel: (result) => {
       const r = asObj(result);
       return {
@@ -261,7 +265,7 @@ export const KID_TOOLS: KidTool[] = [
       properties: { studentId: { type: "number", description: "学生 id" } },
       required: ["studentId"],
     },
-    execute: (args) => fetchStudentAppointments(Number(args.studentId)),
+    execute: (args, signal) => fetchStudentAppointments(Number(args.studentId), signal),
     summarizeForModel: (result) => {
       const r = asObj(result);
       return {
@@ -294,12 +298,12 @@ export const KID_TOOLS: KidTool[] = [
       },
       required: ["studentId"],
     },
-    execute: (args) => {
+    execute: (args, signal) => {
       const studentId = Number(args.studentId);
       const appId = args.appId == null ? undefined : Number(args.appId);
       const page = args.page == null ? 1 : Number(args.page);
       const pageSize = args.pageSize == null ? 10 : Number(args.pageSize);
-      return fetchStudentProducts(studentId, appId, page, pageSize);
+      return fetchStudentProducts(studentId, appId, page, pageSize, signal);
     },
     summarizeForModel: (result) => {
       const r = asObj(result);
@@ -349,7 +353,7 @@ export const KID_TOOLS: KidTool[] = [
       properties: { productId: { type: "number", description: "产品 id，例如 4279" } },
       required: ["productId"],
     },
-    execute: (args) => fetchProduct(Number(args.productId)),
+    execute: (args, signal) => fetchProduct(Number(args.productId), signal),
     summarizeForModel: (result) => {
       const r = asObj(result);
       return {
@@ -395,12 +399,12 @@ export const KID_TOOLS: KidTool[] = [
       },
       required: ["studentId"],
     },
-    execute: (args) => {
+    execute: (args, signal) => {
       const studentId = Number(args.studentId);
       const appId = args.appId == null ? undefined : Number(args.appId);
       const page = args.page == null ? 1 : Number(args.page);
       const pageSize = args.pageSize == null ? 15 : Number(args.pageSize);
-      return fetchStudentBills(studentId, appId, page, pageSize);
+      return fetchStudentBills(studentId, appId, page, pageSize, signal);
     },
     summarizeForModel: (result) => {
       const r = asObj(result);
@@ -443,11 +447,12 @@ export const KID_TOOLS: KidTool[] = [
       },
       required: ["roomId", "role", "userId"],
     },
-    execute: (args) =>
+    execute: (args, signal) =>
       fetchDeviceInfo(
         Number(args.roomId),
         args.role === "student" ? "student" : "teacher",
-        Number(args.userId)
+        Number(args.userId),
+        signal
       ),
     summarizeForModel: (result) => {
       const arr = Array.isArray(result) ? result : [];
@@ -475,10 +480,10 @@ export const KID_TOOLS: KidTool[] = [
       },
       required: ["teacherId"],
     },
-    execute: (args) => {
+    execute: (args, signal) => {
       const teacherId = Number(args.teacherId);
       const appId = args.appId == null ? undefined : Number(args.appId);
-      return fetchTeacherAppointments(teacherId, appId);
+      return fetchTeacherAppointments(teacherId, appId, signal);
     },
     summarizeForModel: (result) => {
       const r = asObj(result);

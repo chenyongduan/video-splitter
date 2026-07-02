@@ -11,6 +11,8 @@ import {
 } from "./aiClient";
 import { getKidToken, setKidToken as persistKidToken } from "./kidApi";
 import { runChatWithTools } from "./chatController";
+import { isAbortError } from "./abortError";
+import { formatAnalysisElapsed } from "./analysisElapsed";
 import {
   addInputHistory,
   getNextHistoryCursor,
@@ -47,13 +49,18 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const [hoveredMessageKey, setHoveredMessageKey] = useState<string | null>(null);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [historyCursor, setHistoryCursor] = useState<number | null>(null);
+  const [analysisElapsedSeconds, setAnalysisElapsedSeconds] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const activeControllerRef = useRef<AbortController | null>(null);
+  const analysisStartedAtRef = useRef<number | null>(null);
 
   const hasMessages = chatMessages.length > 0;
-  const canSubmit = inputValue.trim().length > 0 && !submitting;
+  const canSubmit = submitting || inputValue.trim().length > 0;
 
   useEffect(() => {
     if (!open) {
+      activeControllerRef.current?.abort();
+      activeControllerRef.current = null;
       setInputValue("");
       setSubmitting(false);
       setSelectedModel(DEFAULT_DEEPSEEK_MODEL);
@@ -65,6 +72,8 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
       setIncludeLogContext(false);
       setHoveredMessageKey(null);
       setHistoryCursor(null);
+      setAnalysisElapsedSeconds(0);
+      analysisStartedAtRef.current = null;
       return;
     }
 
@@ -72,6 +81,27 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
     });
   }, [open, chatMessages]);
+
+  useEffect(() => {
+    if (!submitting) {
+      analysisStartedAtRef.current = null;
+      setAnalysisElapsedSeconds(0);
+      return;
+    }
+
+    if (analysisStartedAtRef.current === null) {
+      analysisStartedAtRef.current = Date.now();
+    }
+
+    const updateElapsed = () => {
+      const startedAt = analysisStartedAtRef.current ?? Date.now();
+      setAnalysisElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    };
+
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1000);
+    return () => window.clearInterval(timer);
+  }, [submitting]);
 
   useEffect(() => {
     if (!open) return;
@@ -122,7 +152,12 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
 
   const handleSend = async () => {
     const question = inputValue.trim();
-    if (!question) return;
+    if (submitting || !question) return;
+
+    const abortController = new AbortController();
+    activeControllerRef.current = abortController;
+    analysisStartedAtRef.current = Date.now();
+    setAnalysisElapsedSeconds(0);
 
     const nextMessages: DisplayChatMessage[] = [
       ...chatMessages,
@@ -139,7 +174,10 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
       const { content, toolResults } = await runChatWithTools(selectedModel, history, {
         includeLogContext,
         logText,
+        signal: abortController.signal,
       });
+      if (abortController.signal.aborted || activeControllerRef.current !== abortController) return;
+
       const replyText =
         content.trim() || (toolResults.length ? "已查询到以下数据：" : "AI 未返回可用内容");
       setChatMessages([
@@ -151,12 +189,26 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
         },
       ]);
     } catch (error) {
+      if (isAbortError(error) || abortController.signal.aborted) return;
+
       const errorMessage = error instanceof Error ? error.message : String(error);
       message.error(errorMessage);
       setChatMessages(nextMessages);
     } finally {
-      setSubmitting(false);
+      if (activeControllerRef.current === abortController) {
+        activeControllerRef.current = null;
+        setSubmitting(false);
+        setAnalysisElapsedSeconds(0);
+      }
     }
+  };
+
+  const handleStop = () => {
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = null;
+    analysisStartedAtRef.current = null;
+    setSubmitting(false);
+    setAnalysisElapsedSeconds(0);
   };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -339,18 +391,23 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
               })}
               {submitting && (
                 <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                  <div
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: "#f5f5f5",
-                      border: "1px solid #e5e5e5",
-                    }}
-                  >
-                    <Space size={8}>
-                      <Spin size="small" />
-                      <Text type="secondary">AI 分析中...</Text>
-                    </Space>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        background: "#f5f5f5",
+                        border: "1px solid #e5e5e5",
+                      }}
+                    >
+                      <Space size={8}>
+                        <Spin size="small" />
+                        <Text type="secondary">AI 分析中...</Text>
+                      </Space>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 12, minWidth: 28, textAlign: "right" }}>
+                      {formatAnalysisElapsed(analysisElapsedSeconds)}
+                    </Text>
                   </div>
                 </div>
               )}
@@ -475,8 +532,19 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
               <Button onClick={() => setChatMessages([])} disabled={!hasMessages || submitting}>
                 清空
               </Button>
-              <Button type="primary" onClick={() => void handleSend()} loading={submitting} disabled={!canSubmit}>
-                发送
+              <Button
+                type="primary"
+                danger={submitting}
+                onClick={() => {
+                  if (submitting) {
+                    handleStop();
+                    return;
+                  }
+                  void handleSend();
+                }}
+                disabled={!canSubmit}
+              >
+                {submitting ? "停止" : "发送"}
               </Button>
             </div>
           </div>
