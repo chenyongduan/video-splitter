@@ -3,7 +3,7 @@ import { findKidTool, getKidToolDefinitions } from "./kidApi";
 
 export interface ToolResultEntry {
   toolName: string;
-  /** 完整原始响应——只用于渲染，不进 LLM。 */
+  /** 完整原始响应——不进 LLM，仅用于控制层判断是否查到了数据。 */
   data: unknown;
 }
 
@@ -22,8 +22,8 @@ const MAX_TOOL_ROUNDS = 5;
 const SYSTEM_PROMPT = [
   "你是久趣（97kid）课堂运维助手，用户会用中文提问房间、学生、老师、设备等信息。",
   "需要查询数据时调用对应工具：query_room / list_misc / search_student / list_student_appointments / list_student_products / query_product / list_student_bills / query_device / list_teacher_appointments。",
-  "能从对话直接提取的参数（房间号、id 等）就直接提取；需要先查再查时（如按学生姓名查其预约）可连续调用多个工具。",
-  "工具返回的数据会以结构化卡片展示给用户，你只需用一两句中文简要说明结果或异常，不要复述全部数据。",
+  "能从对话直接提取的参数（房间号、学生 id、产品 id 等）就直接提取；需要先查再查时可连续调用多个工具。",
+  "工具返回的数据不会直接展示给用户，你需要用中文概括关键结论；明细较多时只列最重要的字段和异常点。",
   "通用日志分析问题正常作答即可。",
 ].join("\n");
 
@@ -40,7 +40,7 @@ function safeParseArgs(raw: string): Record<string, unknown> {
 }
 
 /**
- * 跑一轮带工具的对话。完整工具响应只收集到 toolResults（用于渲染），
+ * 跑一轮带工具的对话。完整工具响应只收集到 toolResults（用于控制层判断），
  * 回灌给模型的只是每个工具 summarizeForModel 裁剪后的最小数据（省 token）。
  */
 export async function runChatWithTools(

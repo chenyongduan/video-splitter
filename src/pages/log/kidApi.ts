@@ -70,8 +70,8 @@ export async function fetchBusinessEntitiesAndMisc(): Promise<unknown> {
   return kidGet(`/businessEntitiesAndMisc?${cacheBuster()}`);
 }
 
-export async function fetchStudents(query: string): Promise<unknown> {
-  return kidGet(`/students?${cacheBuster()}&searchText=${encodeURIComponent(query)}&page=1&pageSize=10&country=0`);
+export async function fetchStudent(studentId: number): Promise<unknown> {
+  return kidGet(`/students/${studentId}?${cacheBuster()}`);
 }
 
 export async function fetchStudentAppointments(studentId: number): Promise<unknown> {
@@ -203,33 +203,59 @@ export const KID_TOOLS: KidTool[] = [
   },
   {
     name: "search_student",
-    description: "按学生 id、昵称或手机号搜索学生。返回学生列表（含 id），可用于后续查询学生预约。",
+    description: "按学生 id 查询学生详情，可用于后续查询学生预约、产品和订单。",
     params: {
       type: "object",
-      properties: { query: { type: "string", description: "学生 id、昵称或手机号，例如 3244918" } },
-      required: ["query"],
+      properties: { studentId: { type: "number", description: "学生 id，例如 263288" } },
+      required: ["studentId"],
     },
-    execute: (args) => fetchStudents(String(args.query ?? "")),
+    execute: (args) => fetchStudent(Number(args.studentId)),
     summarizeForModel: (result) => {
       const r = asObj(result);
       return {
-        total: r.total,
-        result: (Array.isArray(r.result) ? r.result : []).map((s) => {
-          const o = asObj(s);
-          return {
-            id: o.id,
-            nickname: o.nickname,
-            localNickname: o.localNickname,
-            mobileSuffix: o.mobileSuffix,
-            status: o.status,
-          };
-        }),
+        id: r.id,
+        username: r.username,
+        nickname: r.nickname,
+        localNickname: r.localNickname,
+        mobileSuffix: r.mobileSuffix,
+        crmAssistantId: r.crmAssistantId,
+        crmStatus: r.crmStatus,
+        age: r.age,
+        gender: r.gender,
+        level: r.level,
+        city: r.city,
+        place: r.place,
+        registerAt: r.registerAt,
+        birthday: r.birthday,
+        refereeId: r.refereeId,
+        vip: r.vip,
+        channel: r.channel,
+        phonicsAllowed: r.phonicsAllowed,
+        phonicsLevel: r.phonicsLevel,
+        finishedLessonCount: r.finishedLessonCount,
+        status: r.status,
+        smallBuyingCount: r.smallBuyingCount,
+        largeBuyingCount: r.largeBuyingCount,
+        marketingBuyingCount: r.marketingBuyingCount,
+        countryId: r.countryId,
+        locationId: r.locationId,
+        roleId: r.roleId,
+        firstSmallBuyAt: r.firstSmallBuyAt,
+        firstLargeBuyAt: r.firstLargeBuyAt,
+        parentId: r.parentId,
+        multiAccountFlag: r.multiAccountFlag,
+        lastLoginAt: r.lastLoginAt,
+        userCourses: r.userCourses,
+        oneOnOne: r.oneOnOne,
+        vacation: r.vacation,
+        enrollmentDate: r.enrollmentDate,
+        grade: r.grade,
       };
     },
   },
   {
     name: "list_student_appointments",
-    description: "查询某学生的预约/上课记录列表（含已完成）。需先通过 search_student 拿到 studentId。",
+    description: "查询某学生的预约/上课记录列表（含已完成）。可先通过 search_student 确认学生详情。",
     params: {
       type: "object",
       properties: { studentId: { type: "number", description: "学生 id" } },

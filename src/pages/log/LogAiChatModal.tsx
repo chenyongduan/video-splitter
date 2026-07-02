@@ -10,27 +10,20 @@ import {
   type DeepSeekModel,
 } from "./aiClient";
 import { getKidToken, setKidToken as persistKidToken } from "./kidApi";
-import { runChatWithTools, type ToolResultEntry } from "./chatController";
-import StructuredData from "./StructuredData";
+import { runChatWithTools } from "./chatController";
+import {
+  addInputHistory,
+  getNextHistoryCursor,
+  getPreviousHistoryCursor,
+  isCursorOnFirstLine,
+  isCursorOnLastLine,
+} from "./inputHistory";
 
 const { Text } = Typography;
 const { TextArea } = Input;
 
-const TOOL_LABELS: Record<string, string> = {
-  query_room: "房间信息",
-  list_misc: "公共枚举",
-  search_student: "学生搜索",
-  list_student_appointments: "学生预约",
-  list_student_products: "学生产品",
-  query_product: "产品详情",
-  list_student_bills: "学生订单",
-  query_device: "设备信息",
-  list_teacher_appointments: "老师排课",
-};
-
 interface DisplayChatMessage extends AiChatMessage {
   timeLabel: string;
-  toolResults?: ToolResultEntry[];
 }
 
 interface LogAiChatModalProps {
@@ -52,6 +45,8 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const [includeLogContext, setIncludeLogContext] = useState(false);
   const [kidToken, setKidTokenInput] = useState(() => getKidToken());
   const [hoveredMessageKey, setHoveredMessageKey] = useState<string | null>(null);
+  const [inputHistory, setInputHistory] = useState<string[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const hasMessages = chatMessages.length > 0;
@@ -69,6 +64,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
       setBalanceLoading(false);
       setIncludeLogContext(false);
       setHoveredMessageKey(null);
+      setHistoryCursor(null);
       return;
     }
 
@@ -133,6 +129,8 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
       { role: "user", content: question, timeLabel: formatTimeLabel(new Date()) },
     ];
     setChatMessages(nextMessages);
+    setInputHistory((history) => addInputHistory(history, question));
+    setHistoryCursor(null);
     setInputValue("");
     setSubmitting(true);
 
@@ -150,7 +148,6 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
           role: "assistant",
           content: replyText,
           timeLabel: formatTimeLabel(new Date()),
-          toolResults: toolResults.length ? toolResults : undefined,
         },
       ]);
     } catch (error) {
@@ -160,6 +157,41 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(event.target.value);
+    setHistoryCursor(null);
+  };
+
+  const applyHistoryValue = (textArea: HTMLTextAreaElement, nextCursor: number | null) => {
+    const historyValue = nextCursor === null ? "" : inputHistory[nextCursor];
+    setHistoryCursor(nextCursor);
+    setInputValue(historyValue);
+
+    requestAnimationFrame(() => {
+      textArea.setSelectionRange(historyValue.length, historyValue.length);
+    });
+  };
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "ArrowUp") {
+      if (!isCursorOnFirstLine(inputValue, event.currentTarget.selectionStart)) return;
+
+      const nextCursor = getPreviousHistoryCursor(inputHistory, historyCursor);
+      if (nextCursor === null) return;
+
+      event.preventDefault();
+      applyHistoryValue(event.currentTarget, nextCursor);
+      return;
+    }
+
+    if (event.key !== "ArrowDown") return;
+    if (historyCursor === null) return;
+    if (!isCursorOnLastLine(inputValue, event.currentTarget.selectionStart)) return;
+
+    event.preventDefault();
+    applyHistoryValue(event.currentTarget, getNextHistoryCursor(inputHistory, historyCursor));
   };
 
   const handleCopyMessage = async (content: string) => {
@@ -245,17 +277,6 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                       >
                         {item.content}
                       </div>
-                      {item.toolResults?.map((toolResult, toolIndex) => (
-                        <div
-                          key={toolIndex}
-                          style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: "100%" }}
-                        >
-                          <Text type="secondary" style={{ fontSize: 11 }}>
-                            {TOOL_LABELS[toolResult.toolName] ?? toolResult.toolName}
-                          </Text>
-                          <StructuredData data={toolResult.data} />
-                        </div>
-                      ))}
                       <div
                         style={{
                           minHeight: 24,
@@ -351,7 +372,8 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <TextArea
             value={inputValue}
-            onChange={(event) => setInputValue(event.target.value)}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
             placeholder="输入你想让 AI 分析的问题，例如：帮我判断断线原因"
             autoSize={{ minRows: 3, maxRows: 6 }}
             onPressEnter={(event) => {
@@ -372,18 +394,41 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                 trigger="click"
                 placement="topRight"
                 content={
-                  <div style={{ minWidth: 240, display: "flex", flexDirection: "column", gap: 12 }}>
-                    <Text strong>设置</Text>
-                    <Text>
-                      余额：
-                      {balanceLoading ? <Spin size="small" style={{ marginLeft: 4 }} /> : `${balanceText} 元`}
+                  <div
+                    style={{
+                      width: 320,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 16,
+                      padding: "4px 2px",
+                    }}
+                  >
+                    <Text strong style={{ fontSize: 18, lineHeight: "26px" }}>
+                      久趣 Token
                     </Text>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <Text type="secondary">97kid Token</Text>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        minHeight: 44,
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        background: "#f7f8fa",
+                        border: "1px solid #edf0f2",
+                      }}
+                    >
+                      <Text type="secondary">余额</Text>
+                      <Text strong style={{ fontSize: 16 }}>
+                        {balanceLoading ? <Spin size="small" /> : `${balanceText} 元`}
+                      </Text>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <Input.Password
                         value={kidToken}
-                        size="small"
-                        placeholder="粘贴 Bearer Token"
+                        size="large"
+                        placeholder="请输入Token"
+                        style={{ width: "100%" }}
                         onChange={(event) => {
                           setKidTokenInput(event.target.value);
                           persistKidToken(event.target.value);
