@@ -14,6 +14,7 @@ import { runChatWithTools } from "./chatController";
 import { isAbortError } from "./abortError";
 import { formatAnalysisElapsed } from "./analysisElapsed";
 import { isImeComposing, shouldSubmitOnEnter } from "./imeInput";
+import { sanitizeAssistantHtml } from "./htmlMessage";
 import {
   addInputHistory,
   getNextHistoryCursor,
@@ -319,20 +320,39 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                         gap: 6,
                       }}
                     >
-                      <div
-                        style={{
-                          padding: "10px 12px",
-                          borderRadius: 8,
-                          background: isUser ? "#e6f4ff" : "#f5f5f5",
-                          border: `1px solid ${isUser ? "#bae0ff" : "#e5e5e5"}`,
-                          whiteSpace: "pre-wrap",
-                          overflowWrap: "anywhere",
-                          wordBreak: "break-word",
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {item.content}
-                      </div>
+                      {isUser ? (
+                        <div
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            background: "#e6f4ff",
+                            border: "1px solid #bae0ff",
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                            wordBreak: "break-word",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {item.content}
+                        </div>
+                      ) : (
+                        <div
+                          className="log-ai-message-html"
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            background: "#f5f5f5",
+                            border: "1px solid #e5e5e5",
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                            wordBreak: "break-word",
+                            lineHeight: 1.6,
+                            maxWidth: "100%",
+                            overflowX: "auto",
+                          }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeAssistantHtml(item.content) }}
+                        />
+                      )}
                       <div
                         style={{
                           minHeight: 24,

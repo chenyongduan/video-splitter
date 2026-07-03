@@ -37,3 +37,36 @@ body {
 audio {
   display: none;
 }
+
+.log-ai-message-html table {
+  width: 100%;
+  margin: 8px 0;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+}
+
+.log-ai-message-html th,
+.log-ai-message-html td {
+  padding: 6px 8px;
+  border: 1px solid #d9d9d9;
+  text-align: left;
+  vertical-align: top;
+}
+
+.log-ai-message-html th {
+  background: #fafafa;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.log-ai-message-html p,
+.log-ai-message-html ul,
+.log-ai-message-html ol,
+.log-ai-message-html pre {
+  margin: 0 0 8px;
+}
+
+.log-ai-message-html :last-child {
+  margin-bottom: 0;
+}
