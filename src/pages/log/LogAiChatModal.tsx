@@ -63,28 +63,18 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const canSubmit = submitting || inputValue.trim().length > 0;
 
   useEffect(() => {
-    if (!open) {
-      activeControllerRef.current?.abort();
-      activeControllerRef.current = null;
-      setInputValue("");
-      setSubmitting(false);
-      setModelOptions([DEFAULT_DEEPSEEK_MODEL]);
-      setModelsLoading(false);
-      setSettingsOpen(false);
-      setBalanceText("--");
-      setBalanceLoading(false);
-      setIncludeLogContext(false);
-      setHoveredMessageKey(null);
-      setHistoryCursor(null);
-      setAnalysisElapsedSeconds(0);
-      analysisStartedAtRef.current = null;
-      return;
-    }
+    if (!open) return;
 
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
     });
   }, [open, chatMessages]);
+
+  useEffect(() => {
+    return () => {
+      activeControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (!submitting) {
