@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "MediaKit",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "identifier": "com.cyd.video-splitter",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -34,6 +34,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -52,6 +53,17 @@
       },
       "wix": {
         "language": "zh-CN"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI5OTgzQjc2N0FCQkVBOEUKUldTTzZydDZkanVZdVZSNEJldHBiMWxPMUttMGZPQ1kxVnU3UDRQZ0Z6a21XWkJ2cVZoK01abDkK",
+      "endpoints": [
+        "https://static-app.97kid.com/app/tool-kit/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

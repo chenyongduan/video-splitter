@@ -1,0 +1,11 @@
+{
+    "version": "0.2.2",
+    "notes": "新增应用内自动更新功能",
+    "pub_date": "2026-07-20T23:40:00+08:00",
+    "platforms": {
+      "windows-x86_64": {
+        "url": "https://static-app.97kid.com/app/tool-kit/MediaKit_0.2.2_x64-setup.exe",
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTTzZydDZkanVZdVpObCs1djBuQUlOZDZvRS9WK1gvR0xrYzNaVm1aUlREVTI1S2syQjNqVnlCMXh1Q0duU1pHM2xQT1RZdm5SQktKVWpSeThHODRobW1Fa0t3NldsVHdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTYxNTAwCWZpbGU6TWVkaWFLaXRfMC4yLjJfeDY0LXNldHVwLmV4ZQp3eHVmL3ZmaUN3ZmFKUXRCNFBhb1l2RkI5WGRBeXBHNzN1RE84K2ROeU9SWDFVcnM4K0wrcjNMTE9vZDJNcVI1Z01LNEc2eTZIQnJBRHRpRHVBM0tBQT09Cg=="
+      }
+    }
+  }

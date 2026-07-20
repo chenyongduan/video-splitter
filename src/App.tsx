@@ -7,6 +7,7 @@ import ImagePage from "./pages/image";
 import IconPage from "./pages/icon";
 import JsonPage from "./pages/json";
 import LogPage from "./pages/log";
+import UpdateButton from "./components/UpdateButton";
 import type { AppTab } from "./types";
 
 const { Header, Content } = Layout;
@@ -74,8 +75,9 @@ const App: React.FC = () => {
             { key: "json", label: "JSON工具" },
             { key: "log", label: "日志查看" },
           ]}
-          style={{ marginBottom: 0 }}
+          style={{ marginBottom: 0, flex: 1, minWidth: 0 }}
         />
+        <UpdateButton />
       </Header>
 
       <Content style={{ overflow: "auto", flex: 1, position: "relative" }}>
