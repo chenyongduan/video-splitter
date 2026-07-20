@@ -5,6 +5,8 @@ import {
   DEFAULT_DEEPSEEK_MODEL,
   fetchDeepSeekBalance,
   fetchDeepSeekModels,
+  getSelectedDeepSeekModel,
+  setSelectedDeepSeekModel,
   type AiChatMessage,
   type ChatMessage,
   type DeepSeekModel,
@@ -40,7 +42,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const [inputValue, setInputValue] = useState("");
   const [chatMessages, setChatMessages] = useState<DisplayChatMessage[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<DeepSeekModel>(DEFAULT_DEEPSEEK_MODEL);
+  const [selectedModel, setSelectedModel] = useState<DeepSeekModel>(getSelectedDeepSeekModel);
   const [modelOptions, setModelOptions] = useState<DeepSeekModel[]>([DEFAULT_DEEPSEEK_MODEL]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -66,7 +68,6 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
       activeControllerRef.current = null;
       setInputValue("");
       setSubmitting(false);
-      setSelectedModel(DEFAULT_DEEPSEEK_MODEL);
       setModelOptions([DEFAULT_DEEPSEEK_MODEL]);
       setModelsLoading(false);
       setSettingsOpen(false);
@@ -151,6 +152,11 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
         message.error(errorMessage);
       })
       .finally(() => setBalanceLoading(false));
+  };
+
+  const handleModelChange = (model: DeepSeekModel) => {
+    setSelectedModel(model);
+    setSelectedDeepSeekModel(model);
   };
 
   const handleSend = async () => {
@@ -549,7 +555,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                     ),
                   })),
                   selectable: false,
-                  onClick: ({ key }) => setSelectedModel(key as DeepSeekModel),
+                  onClick: ({ key }) => handleModelChange(key as DeepSeekModel),
                 }}
               >
                 <Button loading={modelsLoading}>

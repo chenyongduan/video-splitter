@@ -6,6 +6,22 @@ const DEEPSEEK_SYSTEM_PROMPT = "You are a helpful assistant specializing in log 
 
 export const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
 export type DeepSeekModel = string;
+const DEEPSEEK_MODEL_KEY = "mediakit_deepseek_model";
+
+/** Returns the model selected in the previous AI analysis session. */
+export function getSelectedDeepSeekModel(): DeepSeekModel {
+  return localStorage.getItem(DEEPSEEK_MODEL_KEY)?.trim() || DEFAULT_DEEPSEEK_MODEL;
+}
+
+/** Persists the user's AI analysis model preference for the next launch. */
+export function setSelectedDeepSeekModel(model: DeepSeekModel): void {
+  const normalizedModel = model.trim();
+  if (normalizedModel) {
+    localStorage.setItem(DEEPSEEK_MODEL_KEY, normalizedModel);
+  } else {
+    localStorage.removeItem(DEEPSEEK_MODEL_KEY);
+  }
+}
 
 export interface AiChatMessage {
   role: "user" | "assistant";
