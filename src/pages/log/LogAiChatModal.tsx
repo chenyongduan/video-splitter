@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Dropdown, Empty, Input, Modal, Popover, Space, Spin, Switch, Typography, message } from "antd";
-import { CheckOutlined, CopyOutlined, DownOutlined, SettingOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Empty, Input, Modal, Popover, Segmented, Space, Spin, Switch, Typography, message } from "antd";
+import {
+  CheckOutlined,
+  CopyOutlined,
+  DownOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
 import {
   DEFAULT_DEEPSEEK_MODEL,
   fetchDeepSeekBalance,
@@ -13,6 +18,11 @@ import {
 } from "./aiClient";
 import { getKidToken, setKidToken as persistKidToken } from "./kidApi";
 import { runChatWithTools } from "./chatController";
+import {
+  getAiAnalystRole,
+  setAiAnalystRole,
+  type AiAnalystRole,
+} from "./aiRoles";
 import { isAbortError } from "./abortError";
 import { formatAnalysisElapsed } from "./analysisElapsed";
 import { isImeComposing, shouldSubmitOnEnter } from "./imeInput";
@@ -43,6 +53,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const [chatMessages, setChatMessages] = useState<DisplayChatMessage[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [selectedModel, setSelectedModel] = useState<DeepSeekModel>(getSelectedDeepSeekModel);
+  const [analystRole, setAnalystRole] = useState<AiAnalystRole>(getAiAnalystRole);
   const [modelOptions, setModelOptions] = useState<DeepSeekModel[]>([DEFAULT_DEEPSEEK_MODEL]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -149,6 +160,11 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     setSelectedDeepSeekModel(model);
   };
 
+  const handleAnalystRoleChange = (role: AiAnalystRole) => {
+    setAnalystRole(role);
+    setAiAnalystRole(role);
+  };
+
   const handleSend = async () => {
     const question = inputValue.trim();
     if (submitting || !question) return;
@@ -171,6 +187,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     try {
       const history: ChatMessage[] = nextMessages.map(({ role, content }) => ({ role, content }));
       const { content, toolResults } = await runChatWithTools(selectedModel, history, {
+        analystRole,
         includeLogContext,
         logText,
         signal: abortController.signal,
@@ -260,7 +277,21 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   return (
     <Modal
       open={open}
-      title="AI 分析"
+      title={
+        <div className="log-ai-modal-title">
+          <span className="log-ai-modal-title-text">AI 分析</span>
+          <Segmented<AiAnalystRole>
+            className="log-ai-role-switch"
+            value={analystRole}
+            options={[
+              { value: "log-analyst", label: "日志分析师", title: "" },
+              { value: "data-analyst", label: "数据分析师", title: "" },
+            ]}
+            disabled={submitting}
+            onChange={handleAnalystRoleChange}
+          />
+        </div>
+      }
       footer={null}
       onCancel={onClose}
       width={880}

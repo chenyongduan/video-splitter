@@ -1,4 +1,5 @@
 import { chatCompletion, type ChatMessage } from "./aiClient";
+import { getAiAnalystSystemPrompt, type AiAnalystRole } from "./aiRoles";
 import { findKidTool, getKidToolDefinitions } from "./kidApi";
 
 export interface ToolResultEntry {
@@ -13,21 +14,13 @@ export interface ChatTurnResult {
 }
 
 interface RunOptions {
+  analystRole: AiAnalystRole;
   includeLogContext: boolean;
   logText: string;
   signal?: AbortSignal;
 }
 
 const MAX_TOOL_ROUNDS = 5;
-
-const SYSTEM_PROMPT = [
-  "你是久趣（97kid）课堂运维助手，用户会用中文提问房间、学生、老师、设备等信息。",
-  "需要查询数据时调用对应工具：query_room / list_misc / search_student / list_student_appointments / list_student_products / query_product / list_student_bills / query_device / list_teacher_appointments。",
-  "能从对话直接提取的参数（房间号、学生 id、产品 id 等）就直接提取；需要先查再查时可连续调用多个工具。",
-  "工具返回的数据不会直接展示给用户，你需要用中文概括关键结论；凡是展示查询数据、列表或多字段明细时，必须返回 HTML 片段，用 <p> 写结论、用 <table><thead><tbody><tr><th><td> 展示字段和值或列表。",
-  "HTML 只能使用 p、br、ul、ol、li、strong、em、code、pre、table、thead、tbody、tr、th、td、caption 标签，不要输出 style、script、iframe、img、a 或任何标签属性。",
-  "通用日志分析问题正常作答即可。",
-].join("\n");
 
 function safeParseArgs(raw: string): Record<string, unknown> {
   if (!raw) return {};
@@ -50,7 +43,9 @@ export async function runChatWithTools(
   history: ChatMessage[],
   opts: RunOptions
 ): Promise<ChatTurnResult> {
-  const messages: ChatMessage[] = [{ role: "system", content: SYSTEM_PROMPT }];
+  const messages: ChatMessage[] = [
+    { role: "system", content: getAiAnalystSystemPrompt(opts.analystRole) },
+  ];
   if (opts.includeLogContext) {
     messages.push({
       role: "user",
