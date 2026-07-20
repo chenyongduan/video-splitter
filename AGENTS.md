@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Overview
 
-**MediaKit** — a multi-purpose media processing desktop app built with Tauri v2 + React 19. Currently supports video splitting and audio processing (format conversion, compression, trimming). The UI is entirely in Chinese (Simplified).
+**ToolKit** — a multi-purpose media processing desktop app built with Tauri v2 + React 19. Currently supports video splitting and audio processing (format conversion, compression, trimming). The UI is entirely in Chinese (Simplified).
 
 ## Development Commands
 

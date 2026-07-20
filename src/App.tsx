@@ -89,7 +89,7 @@ const App: React.FC = () => {
               cursor: "default",
             }}
           >
-            MediaKit
+            ToolKit
           </span>
         </Popover>
         <Tabs

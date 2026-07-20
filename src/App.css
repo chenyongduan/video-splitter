@@ -1,4 +1,4 @@
-/* Global reset for MediaKit */
+/* Global reset for ToolKit */
 * {
   margin: 0;
   padding: 0;
@@ -24,7 +24,7 @@ body {
   font-size: 15px;
 }
 
-/* MediaKit tab bar */
+/* ToolKit tab bar */
 .ant-tabs-nav {
   margin-bottom: 0 !important;
 }
