@@ -94,6 +94,10 @@ pnpm tauri dev
 
 # 构建生产版本
 pnpm tauri build
+
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content "$env:USERPROFILE\.tauri\mediakit.key" -Raw
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
+pnpm tauri build --bundles nsis
 ```
 
 ### FFmpeg / FFprobe Sidecar 配置
