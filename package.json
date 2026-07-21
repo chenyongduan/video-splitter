@@ -1,13 +1,14 @@
 {
   "name": "video-splitter",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "release:macos:update": "node scripts/release-macos-update.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.5",
