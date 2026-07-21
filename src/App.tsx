@@ -82,9 +82,11 @@ const App: React.FC = () => {
             { key: "json", label: "JSON工具" },
             { key: "log", label: "日志查看" },
           ]}
-          style={{ marginBottom: 0, flex: 1, minWidth: 0 }}
+          style={{ marginBottom: 0, flex: "none", width: "fit-content" }}
         />
-        <UpdateButton />
+        <div style={{ marginLeft: "auto" }}>
+          <UpdateButton />
+        </div>
       </Header>
 
       <Content style={{ overflow: "auto", flex: 1, position: "relative" }}>

@@ -64,7 +64,7 @@ audio {
 .log-ai-message-html ul,
 .log-ai-message-html ol,
 .log-ai-message-html pre {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 .log-ai-message-html :last-child {

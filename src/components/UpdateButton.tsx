@@ -12,6 +12,7 @@ import { isTauri } from "@tauri-apps/api/core";
 export default function UpdateButton() {
   const [update, setUpdate] = useState<Update | null>(null);
   const [installing, setInstalling] = useState(false);
+  const [hovered, setHovered] = useState(false);
   useEffect(() => {
     if (!isTauri()) return;
 
@@ -51,17 +52,33 @@ export default function UpdateButton() {
 
   if (!update) return null;
 
+  const expanded = hovered || installing;
+
   return (
     <Button
       type="primary"
-      size="small"
-      icon={<DownloadOutlined />}
-      loading={installing}
+      icon={expanded ? undefined : <DownloadOutlined />}
       onClick={installUpdate}
-      style={{ flexShrink: 0 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      aria-label={installing ? "更新中" : "更新"}
+      aria-busy={installing}
+      style={{
+        width: expanded ? 60 : 28,
+        minWidth: expanded ? 60 : 28,
+        height: 28,
+        padding: expanded ? "0 10px" : 0,
+        borderRadius: 14,
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        transition: "width 180ms ease, min-width 180ms ease, padding 180ms ease",
+        flexShrink: 0,
+      }}
       title={`更新到 ${update.version}`}
     >
-      {installing ? "更新中" : "更新"}
+      {expanded ? (installing ? "更新中" : "更新") : null}
     </Button>
   );
 }

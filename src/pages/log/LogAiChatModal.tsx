@@ -614,7 +614,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                 justifyContent: "center",
               }}
             >
-              <Empty description="输入问题后开始分析日志" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <Empty description="输入问题后开始分析" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             </div>
           )}
         </div>
