@@ -11,6 +11,7 @@ const updaterOutputDirectory = path.join(rootDirectory, ".release", "macos-updat
 const updaterBaseUrl = (process.env.UPDATE_BASE_URL ?? "https://static-app.97kid.com/app/tool-kit").replace(/\/$/, "");
 const signingKeyFromEnvironment = process.env.TAURI_SIGNING_PRIVATE_KEY;
 const signingKeyPath = process.env.TAURI_SIGNING_PRIVATE_KEY_PATH ?? path.join(rootDirectory, "toolKit.key");
+const skipAppleNotarization = process.env.SKIP_APPLE_NOTARIZATION === "1";
 
 const fail = (message) => {
   throw new Error(`macOS 更新发布失败：${message}`);
@@ -32,11 +33,11 @@ if (process.platform !== "darwin") {
   fail("仅能在 macOS 上运行");
 }
 
-if (!process.env.APPLE_SIGNING_IDENTITY) {
+if (!skipAppleNotarization && !process.env.APPLE_SIGNING_IDENTITY) {
   fail("缺少 APPLE_SIGNING_IDENTITY（Developer ID Application 证书名称）");
 }
 
-if (!hasAppleIdCredentials && !hasApiCredentials) {
+if (!skipAppleNotarization && !hasAppleIdCredentials && !hasApiCredentials) {
   fail("缺少 Apple 公证凭据；请设置 APPLE_ID、APPLE_PASSWORD、APPLE_TEAM_ID，或 APPLE_API_ISSUER、APPLE_API_KEY、APPLE_API_KEY_PATH");
 }
 
@@ -45,6 +46,10 @@ if (!signingKeyFromEnvironment && !(await exists(signingKeyPath))) {
 }
 
 const signingKey = signingKeyFromEnvironment ?? (await readFile(signingKeyPath, "utf8"));
+
+if (skipAppleNotarization) {
+  console.warn("跳过 Apple 签名与公证：本次仅生成已签名的 Tauri 更新归档。");
+}
 
 const tauriConfig = JSON.parse(await readFile(tauriConfigPath, "utf8"));
 const productName = tauriConfig.productName;
