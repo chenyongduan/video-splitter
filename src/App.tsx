@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Breadcrumb, Layout, Popover, Tabs } from "antd";
-import { getVersion } from "@tauri-apps/api/app";
-import { isTauri } from "@tauri-apps/api/core";
+import { Layout, Popover, Tabs } from "antd";
 import { useAppStore } from "./store/segmentStore";
 import VideoPage from "./pages/video";
 import AudioPage from "./pages/audio";
@@ -21,18 +19,6 @@ const App: React.FC = () => {
   const setActiveTab = useAppStore((s) => s.setActiveTab);
   const hasLogText = useAppStore((s) => s.logText.length > 0);
   const [logMounted, setLogMounted] = useState(false);
-  const [appVersion, setAppVersion] = useState<string>();
-
-  useEffect(() => {
-    if (!isTauri()) {
-      setAppVersion("开发模式");
-      return;
-    }
-
-    void getVersion()
-      .then(setAppVersion)
-      .catch((error) => console.warn("读取应用版本失败", error));
-  }, []);
 
   // 启动时从 localStorage 恢复 tab
   useEffect(() => {
@@ -71,14 +57,7 @@ const App: React.FC = () => {
         <Popover
           placement="bottomLeft"
           mouseEnterDelay={0.15}
-          content={
-            <Breadcrumb
-              items={[
-                { title: "底包版本" },
-                { title: appVersion ? (appVersion === "开发模式" ? appVersion : `v${appVersion}`) : "读取中…" },
-              ]}
-            />
-          }
+          content="版本 v0.2.3"
         >
           <span
             style={{
