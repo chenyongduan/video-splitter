@@ -4,6 +4,14 @@ import type { ToolDefinition } from "./aiClient";
 const KID_BASE = "https://gate.97kid.com/a";
 const KID_REFERER = "https://static-app.97kid.com/";
 const KID_TOKEN_KEY = "mediakit_97kid_token";
+export const KID_AUTH_EXPIRED_EVENT = "mediakit:kid-auth-expired";
+
+export class KidTokenExpiredError extends Error {
+  constructor() {
+    super("久趣 Token 已过期，请重新登录");
+    this.name = "KidTokenExpiredError";
+  }
+}
 
 /* ----------------------------- Token 持久化 ----------------------------- */
 
@@ -51,6 +59,11 @@ async function kidGet(pathAndQuery: string, signal?: AbortSignal): Promise<unkno
     data = await response.json();
   } catch {
     data = null;
+  }
+
+  if (response.status === 401) {
+    window.dispatchEvent(new Event(KID_AUTH_EXPIRED_EVENT));
+    throw new KidTokenExpiredError();
   }
 
   if (!response.ok) {

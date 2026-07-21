@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Button, Dropdown, Empty, Input, Modal, Popover, Segmented, Space, Spin, Switch, Typography, message } from "antd";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Dropdown, Empty, Input, Modal, Popover, Segmented, Space, Spin, Switch, Tag, Typography, message } from "antd";
 import {
   CheckOutlined,
   CopyOutlined,
@@ -18,7 +18,7 @@ import {
   type ChatMessage,
   type DeepSeekModel,
 } from "./aiClient";
-import { getKidToken, setKidToken as persistKidToken } from "./kidApi";
+import { getKidToken, KID_AUTH_EXPIRED_EVENT, setKidToken as persistKidToken } from "./kidApi";
 import { runChatWithTools } from "./chatController";
 import {
   getAiAnalystRole,
@@ -29,6 +29,7 @@ import { isAbortError } from "./abortError";
 import { formatAnalysisElapsed } from "./analysisElapsed";
 import { isImeComposing, shouldSubmitOnEnter } from "./imeInput";
 import { sanitizeAssistantHtml } from "./htmlMessage";
+import KidSsoModal from "./KidSsoModal";
 import {
   addInputHistory,
   getNextHistoryCursor,
@@ -128,10 +129,11 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const [modelOptions, setModelOptions] = useState<DeepSeekModel[]>([DEFAULT_DEEPSEEK_MODEL]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [kidSsoOpen, setKidSsoOpen] = useState(false);
   const [balanceText, setBalanceText] = useState("--");
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [includeLogContext, setIncludeLogContext] = useState(false);
-  const [kidToken, setKidTokenInput] = useState(() => getKidToken());
+  const [kidLoggedIn, setKidLoggedIn] = useState(() => Boolean(getKidToken()));
   const [hoveredMessageKey, setHoveredMessageKey] = useState<string | null>(null);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [historyCursor, setHistoryCursor] = useState<number | null>(null);
@@ -157,6 +159,12 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     return () => {
       activeControllerRef.current?.abort();
     };
+  }, []);
+
+  useEffect(() => {
+    const handleKidAuthExpired = () => setKidLoggedIn(false);
+    window.addEventListener(KID_AUTH_EXPIRED_EVENT, handleKidAuthExpired);
+    return () => window.removeEventListener(KID_AUTH_EXPIRED_EVENT, handleKidAuthExpired);
   }, []);
 
   useEffect(() => {
@@ -236,6 +244,15 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     setAnalystRole(role);
     setAiAnalystRole(role);
   };
+
+  const handleKidSsoSuccess = useCallback((accessToken: string) => {
+    const token = accessToken.trim();
+    persistKidToken(token);
+    setKidLoggedIn(true);
+    setKidSsoOpen(false);
+    setSettingsOpen(false);
+    message.success("单点登录成功，Token 已保存");
+  }, []);
 
   const handleSend = async () => {
     const question = inputValue.trim();
@@ -394,6 +411,11 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
         },
       }}
     >
+      <KidSsoModal
+        open={kidSsoOpen}
+        onClose={() => setKidSsoOpen(false)}
+        onSuccess={handleKidSsoSuccess}
+      />
       <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1, minHeight: 0 }}>
         <div
           ref={scrollRef}
@@ -637,9 +659,14 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                       padding: "4px 2px",
                     }}
                   >
-                    <Text strong style={{ fontSize: 18, lineHeight: "26px" }}>
-                      久趣 Token
-                    </Text>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <Text strong style={{ fontSize: 18, lineHeight: "26px" }}>
+                        久趣 Token
+                      </Text>
+                      <Tag color={kidLoggedIn ? "success" : "default"} style={{ marginInlineEnd: 0 }}>
+                        {kidLoggedIn ? "已登录" : "未登录"}
+                      </Tag>
+                    </div>
                     <div
                       style={{
                         display: "flex",
@@ -657,18 +684,9 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                         {balanceLoading ? <Spin size="small" /> : `${balanceText} 元`}
                       </Text>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <Input.Password
-                        value={kidToken}
-                        size="large"
-                        placeholder="请输入Token"
-                        style={{ width: "100%" }}
-                        onChange={(event) => {
-                          setKidTokenInput(event.target.value);
-                          persistKidToken(event.target.value);
-                        }}
-                      />
-                    </div>
+                    <Button type="primary" block onClick={() => setKidSsoOpen(true)}>
+                      {kidLoggedIn ? "重新登录" : "单点登录"}
+                    </Button>
                   </div>
                 }
               >

@@ -1,6 +1,6 @@
 import { chatCompletion, type ChatMessage } from "./aiClient";
 import { getAiAnalystSystemPrompt, type AiAnalystRole } from "./aiRoles";
-import { findKidTool, getKidToolDefinitions } from "./kidApi";
+import { findKidTool, getKidToolDefinitions, KidTokenExpiredError } from "./kidApi";
 
 export interface ToolResultEntry {
   toolName: string;
@@ -94,6 +94,10 @@ export async function runChatWithTools(
         });
         toolResults.push({ toolName: tool.name, data: result });
       } catch (error) {
+        if (error instanceof KidTokenExpiredError) {
+          throw error;
+        }
+
         const reason = error instanceof Error ? error.message : String(error);
         messages.push({
           role: "tool",
