@@ -4,8 +4,10 @@ import {
   CheckOutlined,
   CopyOutlined,
   DownOutlined,
+  PictureOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
+import { invoke } from "@tauri-apps/api/core";
 import {
   DEFAULT_DEEPSEEK_MODEL,
   fetchDeepSeekBalance,
@@ -38,6 +40,75 @@ import {
 const { Text } = Typography;
 const { TextArea } = Input;
 
+const messageElementToRgba = (element: HTMLElement) => {
+  const rect = element.getBoundingClientRect();
+  const styles = window.getComputedStyle(element);
+  const paddingLeft = Number.parseFloat(styles.paddingLeft);
+  const paddingRight = Number.parseFloat(styles.paddingRight);
+  const paddingTop = Number.parseFloat(styles.paddingTop);
+  const paddingBottom = Number.parseFloat(styles.paddingBottom);
+  const fontSize = Number.parseFloat(styles.fontSize);
+  const lineHeight = Number.parseFloat(styles.lineHeight) || fontSize * 1.6;
+  const width = Math.ceil(rect.width);
+  const contentWidth = width - paddingLeft - paddingRight;
+  const scale = window.devicePixelRatio || 1;
+  const measurementCanvas = document.createElement("canvas");
+  const measurementContext = measurementCanvas.getContext("2d");
+  if (!measurementContext) throw new Error("无法生成聊天图片");
+
+  measurementContext.font = `${styles.fontWeight} ${styles.fontSize} ${styles.fontFamily}`;
+  const lines = element.innerText
+    .split("\n")
+    .flatMap((paragraph) => wrapCanvasText(measurementContext, paragraph || " ", contentWidth));
+  const height = Math.max(Math.ceil(rect.height), Math.ceil(paddingTop + paddingBottom + lines.length * lineHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("无法生成聊天图片");
+
+  context.scale(scale, scale);
+  context.fillStyle = styles.backgroundColor;
+  context.strokeStyle = styles.borderColor;
+  context.lineWidth = Number.parseFloat(styles.borderWidth) || 1;
+  const radius = Number.parseFloat(styles.borderRadius) || 0;
+  drawRoundedRect(context, 0.5, 0.5, width - 1, height - 1, radius);
+  context.fill();
+  context.stroke();
+  context.fillStyle = styles.color;
+  context.font = measurementContext.font;
+  context.textBaseline = "top";
+  lines.forEach((line, index) => context.fillText(line, paddingLeft, paddingTop + index * lineHeight));
+
+  return {
+    rgba: new Uint8Array(context.getImageData(0, 0, canvas.width, canvas.height).data),
+    width: canvas.width,
+    height: canvas.height,
+  };
+};
+
+const wrapCanvasText = (context: CanvasRenderingContext2D, text: string, maxWidth: number) => {
+  const lines: string[] = [];
+  let line = "";
+  for (const character of text) {
+    if (line && context.measureText(line + character).width > maxWidth) {
+      lines.push(line);
+      line = character;
+    } else {
+      line += character;
+    }
+  }
+  lines.push(line);
+  return lines;
+};
+
+const drawRoundedRect = (context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) => {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.roundRect(x, y, width, height, safeRadius);
+  context.closePath();
+};
+
 interface DisplayChatMessage extends AiChatMessage {
   timeLabel: string;
 }
@@ -66,6 +137,7 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
   const [historyCursor, setHistoryCursor] = useState<number | null>(null);
   const [analysisElapsedSeconds, setAnalysisElapsedSeconds] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const activeControllerRef = useRef<AbortController | null>(null);
   const analysisStartedAtRef = useRef<number | null>(null);
   const isComposingRef = useRef(false);
@@ -274,6 +346,20 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     }
   };
 
+  const handleCopyMessageImage = async (messageKey: string) => {
+    const messageElement = messageRefs.current[messageKey];
+    if (!messageElement) return;
+
+    try {
+      const image = messageElementToRgba(messageElement);
+      await invoke("plugin:clipboard-manager|write_image", { image });
+      message.success("图片已复制到剪贴板");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      message.error(`图片复制失败: ${errorMessage}`);
+    }
+  };
+
   return (
     <Modal
       open={open}
@@ -349,6 +435,9 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                     >
                       {isUser ? (
                         <div
+                          ref={(element) => {
+                            messageRefs.current[messageKey] = element;
+                          }}
                           style={{
                             padding: "10px 12px",
                             borderRadius: 8,
@@ -364,6 +453,9 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                         </div>
                       ) : (
                         <div
+                          ref={(element) => {
+                            messageRefs.current[messageKey] = element;
+                          }}
                           className="log-ai-message-html"
                           style={{
                             padding: "10px 12px",
@@ -413,6 +505,20 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                                   color: "#666",
                                 }}
                               />
+                              <Button
+                                type="text"
+                                size="small"
+                                aria-label="复制为图片"
+                                icon={<PictureOutlined />}
+                                onClick={() => void handleCopyMessageImage(messageKey)}
+                                style={{
+                                  width: 24,
+                                  minWidth: 24,
+                                  height: 24,
+                                  padding: 0,
+                                  color: "#666",
+                                }}
+                              />
                             </>
                           ) : (
                             <>
@@ -421,6 +527,20 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
                                 size="small"
                                 icon={<CopyOutlined />}
                                 onClick={() => void handleCopyMessage(item.content)}
+                                style={{
+                                  width: 24,
+                                  minWidth: 24,
+                                  height: 24,
+                                  padding: 0,
+                                  color: "#666",
+                                }}
+                              />
+                              <Button
+                                type="text"
+                                size="small"
+                                aria-label="复制为图片"
+                                icon={<PictureOutlined />}
+                                onClick={() => void handleCopyMessageImage(messageKey)}
                                 style={{
                                   width: 24,
                                   minWidth: 24,

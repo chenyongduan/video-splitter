@@ -12,6 +12,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(Mutex::new(json_editor::JsonEditorState::default()))
         .invoke_handler(tauri::generate_handler![
             json_editor::json_open_file,

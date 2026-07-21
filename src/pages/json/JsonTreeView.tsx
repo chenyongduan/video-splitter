@@ -388,6 +388,10 @@ const JsonTreeView: React.FC = () => {
           lineHeight: `${LINE_HEIGHT}px`,
           background: "#fafafa",
           position: "relative",
+          // Explicitly override the app-level selection setting so text remains
+          // selectable in production builds as well.
+          userSelect: "text",
+          WebkitUserSelect: "text",
         }}
       >
       <div style={{ height: totalHeight, position: "relative" }}>
