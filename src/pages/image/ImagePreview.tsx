@@ -324,10 +324,12 @@ const ImagePreview: React.FC = () => {
         minHeight: baseHeight || undefined,
       }}
     >
-      {/* 内边距包裹层：承担 padding（透明），不改变 img 自身的测量 */}
+      {/* 内边距包裹层：承担 padding，不改变 img 自身的测量。
+          预览用白底让边距可见，导出时仍为透明 */}
       <div
         style={{
           padding: imagePadding,
+          background: imagePadding > 0 ? "#fff" : undefined,
           borderRadius: 4,
           lineHeight: 0,
         }}
