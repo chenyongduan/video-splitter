@@ -7,13 +7,14 @@ const KID_SSO_ORIGIN = new URL(KID_SSO_URL).origin;
 interface KidSsoModalProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: (accessToken: string) => void;
+  onSuccess: (accessToken: string, expiresIn?: number) => void;
 }
 
 interface KidSsoMessage {
   type?: unknown;
   data?: {
     access_token?: unknown;
+    expires_in?: unknown;
   };
 }
 
@@ -49,7 +50,8 @@ const KidSsoModal: FC<KidSsoModalProps> = ({ open, onClose, onSuccess }) => {
       const accessToken = event.data.data?.access_token;
       if (typeof accessToken !== "string" || !accessToken.trim()) return;
 
-      onSuccess(accessToken);
+      const expiresIn = Number(event.data.data?.expires_in);
+      onSuccess(accessToken, Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : undefined);
     };
 
     window.addEventListener("message", handleMessage);

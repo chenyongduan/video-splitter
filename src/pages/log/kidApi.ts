@@ -4,6 +4,9 @@ import type { ToolDefinition } from "./aiClient";
 const KID_BASE = "https://gate.97kid.com/a";
 const KID_REFERER = "https://static-app.97kid.com/";
 const KID_TOKEN_KEY = "mediakit_97kid_token";
+const KID_EXPIRES_KEY = "mediakit_97kid_expires_at";
+/** 提前 10 分钟视为过期 */
+const KID_EXPIRY_EARLY_MS = 10 * 60 * 1000;
 export const KID_AUTH_EXPIRED_EVENT = "mediakit:kid-auth-expired";
 
 export class KidTokenExpiredError extends Error {
@@ -15,18 +18,75 @@ export class KidTokenExpiredError extends Error {
 
 /* ----------------------------- Token 持久化 ----------------------------- */
 
-export function getKidToken(): string {
-  return localStorage.getItem(KID_TOKEN_KEY)?.trim() ?? "";
+const readExpiresAt = (): number => {
+  const raw = Number(localStorage.getItem(KID_EXPIRES_KEY));
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+};
+
+const isKidTokenExpired = (): boolean => {
+  const expiresAt = readExpiresAt();
+  return expiresAt > 0 && Date.now() >= expiresAt - KID_EXPIRY_EARLY_MS;
+};
+
+const clearKidAuth = (notify: boolean): void => {
+  localStorage.removeItem(KID_TOKEN_KEY);
+  localStorage.removeItem(KID_EXPIRES_KEY);
+  clearExpiryTimer();
+  if (notify) {
+    window.dispatchEvent(new Event(KID_AUTH_EXPIRED_EVENT));
+  }
+};
+
+let expiryTimer: number | null = null;
+
+function clearExpiryTimer(): void {
+  if (expiryTimer !== null) {
+    window.clearTimeout(expiryTimer);
+    expiryTimer = null;
+  }
 }
 
-export function setKidToken(value: string): void {
+/** 提前 10 分钟清除 Token 并广播过期事件（含重启后恢复的 Token）。 */
+function scheduleKidTokenExpiry(): void {
+  clearExpiryTimer();
+  const expiresAt = readExpiresAt();
+  if (expiresAt <= 0) return;
+
+  const delay = Math.max(0, expiresAt - KID_EXPIRY_EARLY_MS - Date.now());
+  expiryTimer = window.setTimeout(() => {
+    if (localStorage.getItem(KID_TOKEN_KEY)?.trim()) {
+      clearKidAuth(true);
+    }
+  }, delay);
+}
+
+export function getKidToken(): string {
+  const token = localStorage.getItem(KID_TOKEN_KEY)?.trim() ?? "";
+  if (token && isKidTokenExpired()) {
+    clearKidAuth(true);
+    return "";
+  }
+  return token;
+}
+
+export function setKidToken(value: string, expiresIn?: number): void {
   const trimmed = value.trim();
   if (trimmed) {
     localStorage.setItem(KID_TOKEN_KEY, trimmed);
+    const seconds = Number(expiresIn);
+    if (Number.isFinite(seconds) && seconds > 0) {
+      localStorage.setItem(KID_EXPIRES_KEY, String(Date.now() + seconds * 1000));
+    } else {
+      localStorage.removeItem(KID_EXPIRES_KEY);
+    }
+    scheduleKidTokenExpiry();
   } else {
-    localStorage.removeItem(KID_TOKEN_KEY);
+    clearKidAuth(false);
   }
 }
+
+// 重启后为仍在有效期内的已存 Token 恢复到期定时器
+scheduleKidTokenExpiry();
 
 /* ------------------------------- 请求工具 ------------------------------- */
 

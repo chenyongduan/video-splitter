@@ -167,6 +167,13 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     return () => window.removeEventListener(KID_AUTH_EXPIRED_EVENT, handleKidAuthExpired);
   }, []);
 
+  // 打开弹窗时重新校验（getKidToken 内部会处理提前过期并清除）
+  useEffect(() => {
+    if (open) {
+      setKidLoggedIn(Boolean(getKidToken()));
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!submitting) {
       analysisStartedAtRef.current = null;
@@ -245,9 +252,9 @@ const LogAiChatModal: React.FC<LogAiChatModalProps> = ({ open, logText, onClose 
     setAiAnalystRole(role);
   };
 
-  const handleKidSsoSuccess = useCallback((accessToken: string) => {
+  const handleKidSsoSuccess = useCallback((accessToken: string, expiresIn?: number) => {
     const token = accessToken.trim();
-    persistKidToken(token);
+    persistKidToken(token, expiresIn);
     setKidLoggedIn(true);
     setKidSsoOpen(false);
     setSettingsOpen(false);
