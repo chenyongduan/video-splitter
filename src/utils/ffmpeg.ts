@@ -4,7 +4,6 @@ import type {
   Segment,
   VideoInfo,
   SplitProgress,
-  VideoConvertParams,
   VideoCompressParams,
 } from "../types";
 
@@ -121,37 +120,9 @@ const VIDEO_ENCODERS: Record<string, string[]> = {
 };
 
 /**
- * Convert video to a different format using FFmpeg re-encoding.
- */
-export async function convertVideo(
-  inputPath: string,
-  outputPath: string,
-  _params: VideoConvertParams,
-): Promise<void> {
-  const ext = outputPath.split(".").pop()?.toLowerCase() || "mp4";
-  const encoderArgs = VIDEO_ENCODERS[ext] || VIDEO_ENCODERS["mp4"];
-
-  const args = [
-    "-y",
-    "-i",
-    inputPath,
-    ...encoderArgs,
-    "-pix_fmt",
-    "yuv420p",
-    ...(ext === "mp4" || ext === "mov" ? ["-movflags", "+faststart"] : []),
-    outputPath,
-  ];
-
-  const command = Command.sidecar("binaries/ffmpeg", args);
-  const result = await command.execute();
-
-  if (result.code !== 0) {
-    throw new Error(`视频转换失败: ${result.stderr}`);
-  }
-}
-
-/**
- * Compress video using CRF quality control with optional resolution scaling.
+ * Compress (and optionally convert) video using CRF quality control
+ * with optional resolution scaling. Output format is derived from the
+ * output file extension.
  */
 export async function compressVideo(
   inputPath: string,
@@ -191,7 +162,7 @@ export async function compressVideo(
   const result = await command.execute();
 
   if (result.code !== 0) {
-    throw new Error(`视频压缩失败: ${result.stderr}`);
+    throw new Error(`FFmpeg 处理失败: ${result.stderr}`);
   }
 }
 

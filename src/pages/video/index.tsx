@@ -12,8 +12,7 @@ import {
   FolderOpenOutlined,
   InboxOutlined,
   DeleteOutlined,
-  SwapOutlined,
-  CompressOutlined,
+  ToolOutlined,
   ScissorOutlined,
   AudioOutlined,
 } from "@ant-design/icons";
@@ -23,8 +22,7 @@ import { getVideoInfo } from "../../utils/ffmpeg";
 import { formatTime, formatFileSize } from "../../utils/format";
 import ProcessNotification from "../../components/ProcessNotification";
 import VideoPlayer from "./VideoPlayer";
-import VideoConverter from "./VideoConverter";
-import VideoCompressor from "./VideoCompressor";
+import VideoGeneral from "./VideoGeneral";
 import VideoSplitter from "./VideoSplitter";
 import VideoExtractAudio from "./VideoExtractAudio";
 import { useAppStore } from "../../store/segmentStore";
@@ -157,8 +155,7 @@ const VideoPage: React.FC = () => {
   }
 
   const tabItems = [
-    { key: "convert" as const, label: "格式转换", icon: <SwapOutlined /> },
-    { key: "compress" as const, label: "视频压缩", icon: <CompressOutlined /> },
+    { key: "general" as const, label: "视频通用", icon: <ToolOutlined /> },
     { key: "split" as const, label: "视频分割", icon: <ScissorOutlined /> },
     { key: "extractAudio" as const, label: "导出音频", icon: <AudioOutlined /> },
   ];
@@ -284,8 +281,7 @@ const VideoPage: React.FC = () => {
               padding: 16,
             }}
           >
-            {videoFunctionTab === "convert" && <VideoConverter />}
-            {videoFunctionTab === "compress" && <VideoCompressor />}
+            {videoFunctionTab === "general" && <VideoGeneral />}
             {videoFunctionTab === "split" && <VideoSplitter />}
             {videoFunctionTab === "extractAudio" && <VideoExtractAudio />}
           </div>

@@ -197,7 +197,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   splitResult: null,
 
   // Video processing
-  videoFunctionTab: "split",
+  videoFunctionTab: "general",
   isVideoProcessing: false,
   videoProcessResult: null,
 
@@ -249,7 +249,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       segments: [],
       progress: null,
       splitResult: null,
-      videoFunctionTab: "split",
+      videoFunctionTab: "general",
       isVideoProcessing: false,
       videoProcessResult: null,
     }),
@@ -263,7 +263,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       segments: [],
       progress: null,
       splitResult: null,
-      videoFunctionTab: "split",
+      videoFunctionTab: "general",
       isVideoProcessing: false,
       videoProcessResult: null,
     }),
