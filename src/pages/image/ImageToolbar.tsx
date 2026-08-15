@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
-import { Button, ColorPicker, InputNumber, Space, Switch, Typography } from "antd";
-import type { Color } from "antd/es/color-picker";
+import { Button, InputNumber, Space, Typography } from "antd";
 import {
   RotateLeftOutlined,
   RotateRightOutlined,
@@ -26,7 +25,6 @@ const ImageToolbar: React.FC = () => {
   const cropRect = useAppStore((s) => s.imageCropRect);
   const cropEnabled = useAppStore((s) => s.imageCropEnabled);
   const padding = useAppStore((s) => s.imagePadding);
-  const paddingColor = useAppStore((s) => s.imagePaddingColor);
   const outputFormat = useAppStore((s) => s.imageOutput.format);
   const setRotation = useAppStore((s) => s.setImageRotation);
   const setFlipH = useAppStore((s) => s.setImageFlipH);
@@ -34,17 +32,13 @@ const ImageToolbar: React.FC = () => {
   const setCropRect = useAppStore((s) => s.setImageCropRect);
   const setCropEnabled = useAppStore((s) => s.setImageCropEnabled);
   const setPadding = useAppStore((s) => s.setImagePadding);
-  const setPaddingColor = useAppStore((s) => s.setImagePaddingColor);
   const resetImageEdit = useAppStore((s) => s.resetImageEdit);
 
-  const isTransparent = paddingColor === "transparent";
   // 无 alpha 通道的输出格式，透明内边距导出时回退为白色
   const resolvedFormat =
     outputFormat === "original" ? imageInfo?.format : outputFormat;
   const noAlphaFallback =
-    padding > 0 &&
-    isTransparent &&
-    (resolvedFormat === "jpg" || resolvedFormat === "bmp");
+    padding > 0 && (resolvedFormat === "jpg" || resolvedFormat === "bmp");
 
   // 旋转后的基准尺寸（不含裁剪）
   const base = imageInfo ? getEditedDimensions(imageInfo, rotation, null) : null;
@@ -129,7 +123,7 @@ const ImageToolbar: React.FC = () => {
 
         <div style={{ width: 1, height: 24, background: "#e8e8e8" }} />
 
-        {/* 内边距 */}
+        {/* 内边距（透明） */}
         <Space>
           <BorderOuterOutlined style={{ color: "#666" }} />
           <Text style={{ fontSize: 13, color: "#666" }}>内边距：</Text>
@@ -141,24 +135,6 @@ const ImageToolbar: React.FC = () => {
             style={{ width: 80 }}
           />
         </Space>
-        {padding > 0 && (
-          <>
-            <Space>
-              <Text style={{ fontSize: 13, color: "#666" }}>透明</Text>
-              <Switch
-                checked={isTransparent}
-                onChange={(v) => setPaddingColor(v ? "transparent" : "#ffffff")}
-              />
-            </Space>
-            {!isTransparent && (
-              <ColorPicker
-                value={paddingColor}
-                onChange={(color: Color) => setPaddingColor(color.toHexString())}
-                disabledAlpha
-              />
-            )}
-          </>
-        )}
 
         <div style={{ flex: 1 }} />
 

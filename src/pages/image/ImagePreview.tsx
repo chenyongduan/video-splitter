@@ -249,7 +249,6 @@ const ImagePreview: React.FC = () => {
   const imageFlipH = useAppStore((s) => s.imageFlipH);
   const imageFlipV = useAppStore((s) => s.imageFlipV);
   const imagePadding = useAppStore((s) => s.imagePadding);
-  const imagePaddingColor = useAppStore((s) => s.imagePaddingColor);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -325,14 +324,10 @@ const ImagePreview: React.FC = () => {
         minHeight: baseHeight || undefined,
       }}
     >
-      {/* 内边距包裹层：承担 padding + 背景色，不改变 img 自身的测量 */}
+      {/* 内边距包裹层：承担 padding（透明），不改变 img 自身的测量 */}
       <div
         style={{
           padding: imagePadding,
-          background:
-            imagePadding > 0 && imagePaddingColor !== "transparent"
-              ? imagePaddingColor
-              : undefined,
           borderRadius: 4,
           lineHeight: 0,
         }}

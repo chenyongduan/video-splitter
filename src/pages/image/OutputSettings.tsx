@@ -46,7 +46,6 @@ const OutputSettings: React.FC = () => {
   const flipV = useAppStore((s) => s.imageFlipV);
   const cropRect = useAppStore((s) => s.imageCropRect);
   const padding = useAppStore((s) => s.imagePadding);
-  const paddingColor = useAppStore((s) => s.imagePaddingColor);
   const output = useAppStore((s) => s.imageOutput);
   const setOutput = useAppStore((s) => s.setImageOutput);
   const setProcessing = useAppStore((s) => s.setImageProcessing);
@@ -123,7 +122,7 @@ const OutputSettings: React.FC = () => {
 
       const params = resolveImageProcessParams(
         imageInfo,
-        { rotation, flipH, flipV, crop: cropRect, padding, paddingColor },
+        { rotation, flipH, flipV, crop: cropRect, padding },
         output
       );
       await processImage(imagePath, outputPath, params);

@@ -160,8 +160,6 @@ export function resolveImageProcessParams(
     flipV: boolean;
     crop: ImageCropRect | null;
     padding: number;
-    /** "#RRGGBB" 或 "transparent" */
-    paddingColor: string;
   },
   output: ImageOutputSettings
 ): ImageProcessParams {
@@ -190,16 +188,10 @@ export function resolveImageProcessParams(
     );
   }
 
-  // 内边距（颜色按输出格式解析：无 alpha 通道的格式透明回退为白色）
+  // 内边距：固定透明；无 alpha 通道的输出格式回退为白色
   if (edit.padding > 0) {
     const alphaCapable = ["png", "webp", "tiff", "gif", "ico"].includes(format);
-    let padColor = edit.paddingColor;
-    if (padColor === "transparent") {
-      padColor = alphaCapable ? "black@0.0" : "white";
-    } else if (!/^#[0-9a-fA-F]{6}$/.test(padColor)) {
-      // 防御：非法颜色值（如 rgb() 字符串里的逗号会破坏 filtergraph）回退为白色
-      padColor = "white";
-    }
+    const padColor = alphaCapable ? "black@0.0" : "white";
     const content = getEditedDimensions(imageInfo, rotation, edit.crop);
     filters.push(
       `pad=${content.width + edit.padding * 2}:${content.height + edit.padding * 2}:${edit.padding}:${edit.padding}:color=${padColor}`

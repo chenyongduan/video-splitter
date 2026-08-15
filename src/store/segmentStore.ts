@@ -67,8 +67,6 @@ interface AppState {
   imageCropRect: { x: number; y: number; w: number; h: number };
   imageCropEnabled: boolean;
   imagePadding: number;
-  /** "#RRGGBB" 或 "transparent" */
-  imagePaddingColor: string;
   imageOutput: ImageOutputSettings;
 
   // Video actions
@@ -112,7 +110,6 @@ interface AppState {
   setImageCropRect: (rect: { x: number; y: number; w: number; h: number }) => void;
   setImageCropEnabled: (val: boolean) => void;
   setImagePadding: (val: number) => void;
-  setImagePaddingColor: (color: string) => void;
   setImageOutput: (patch: Partial<ImageOutputSettings>) => void;
   resetImageEdit: () => void;
 
@@ -177,7 +174,6 @@ const resetImageEditState = () => ({
   imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
   imageCropEnabled: false,
   imagePadding: 0,
-  imagePaddingColor: "transparent",
   imageOutput: { ...DEFAULT_IMAGE_OUTPUT },
 });
 
@@ -231,7 +227,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
   imageCropEnabled: false,
   imagePadding: 0,
-  imagePaddingColor: "transparent",
   imageOutput: { ...DEFAULT_IMAGE_OUTPUT },
 
   // Icon
@@ -394,7 +389,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setImageCropRect: (rect) => set({ imageCropRect: rect }),
   setImageCropEnabled: (val) => set({ imageCropEnabled: val }),
   setImagePadding: (val) => set({ imagePadding: val }),
-  setImagePaddingColor: (color) => set({ imagePaddingColor: color }),
   setImageOutput: (patch) =>
     set((s) => ({ imageOutput: { ...s.imageOutput, ...patch } })),
   resetImageEdit: () => set({ ...resetImageEditState() }),
