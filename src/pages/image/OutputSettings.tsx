@@ -45,6 +45,8 @@ const OutputSettings: React.FC = () => {
   const flipH = useAppStore((s) => s.imageFlipH);
   const flipV = useAppStore((s) => s.imageFlipV);
   const cropRect = useAppStore((s) => s.imageCropRect);
+  const padding = useAppStore((s) => s.imagePadding);
+  const paddingColor = useAppStore((s) => s.imagePaddingColor);
   const output = useAppStore((s) => s.imageOutput);
   const setOutput = useAppStore((s) => s.setImageOutput);
   const setProcessing = useAppStore((s) => s.setImageProcessing);
@@ -52,10 +54,13 @@ const OutputSettings: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
 
-  // 编辑后（旋转+裁剪）尺寸
+  // 编辑后（旋转+裁剪+内边距）尺寸
   const edited = useMemo(
-    () => (imageInfo ? getEditedDimensions(imageInfo, rotation, cropRect) : null),
-    [imageInfo, rotation, cropRect]
+    () =>
+      imageInfo
+        ? getEditedDimensions(imageInfo, rotation, cropRect, padding)
+        : null,
+    [imageInfo, rotation, cropRect, padding]
   );
 
   const resolvedFormat =
@@ -118,7 +123,7 @@ const OutputSettings: React.FC = () => {
 
       const params = resolveImageProcessParams(
         imageInfo,
-        { rotation, flipH, flipV, crop: cropRect },
+        { rotation, flipH, flipV, crop: cropRect, padding, paddingColor },
         output
       );
       await processImage(imagePath, outputPath, params);

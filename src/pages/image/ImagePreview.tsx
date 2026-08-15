@@ -248,6 +248,8 @@ const ImagePreview: React.FC = () => {
   const imageRotation = useAppStore((s) => s.imageRotation);
   const imageFlipH = useAppStore((s) => s.imageFlipH);
   const imageFlipV = useAppStore((s) => s.imageFlipV);
+  const imagePadding = useAppStore((s) => s.imagePadding);
+  const imagePaddingColor = useAppStore((s) => s.imagePaddingColor);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -323,27 +325,41 @@ const ImagePreview: React.FC = () => {
         minHeight: baseHeight || undefined,
       }}
     >
-      <img
-        ref={imgRef}
-        src={src}
-        alt="预览"
-        onLoad={() => {
-          measureImg();
-          // 记录初始容器高度（未旋转时）
-          if (containerRef.current && !baseHeight) {
-            setBaseHeight(containerRef.current.clientHeight);
-          }
-        }}
+      {/* 内边距包裹层：承担 padding + 背景色，不改变 img 自身的测量 */}
+      <div
         style={{
-          maxWidth: isRotated ? 320 : "100%",
-          maxHeight: 320,
-          objectFit: "contain",
+          padding: imagePadding,
+          background:
+            imagePadding > 0 && imagePaddingColor !== "transparent"
+              ? imagePaddingColor
+              : undefined,
           borderRadius: 4,
-          transform,
-          transition: "transform 0.2s ease",
-          pointerEvents: showCrop ? "none" : undefined,
+          lineHeight: 0,
         }}
-      />
+      >
+        <img
+          ref={imgRef}
+          src={src}
+          alt="预览"
+          onLoad={() => {
+            measureImg();
+            // 记录初始容器高度（未旋转时）
+            if (containerRef.current && !baseHeight) {
+              setBaseHeight(containerRef.current.clientHeight);
+            }
+          }}
+          style={{
+            maxWidth: isRotated ? 320 : "100%",
+            maxHeight: 320,
+            objectFit: "contain",
+            borderRadius: 4,
+            transform,
+            transition: "transform 0.2s ease",
+            pointerEvents: showCrop ? "none" : undefined,
+            display: "block",
+          }}
+        />
+      </div>
       {/* 裁剪遮罩层 */}
       {showCrop && imgDisplay.width > 0 && (
         <CropOverlay imgDisplay={imgDisplay} />

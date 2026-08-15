@@ -66,6 +66,9 @@ interface AppState {
   imageFlipV: boolean;
   imageCropRect: { x: number; y: number; w: number; h: number };
   imageCropEnabled: boolean;
+  imagePadding: number;
+  /** "#RRGGBB" 或 "transparent" */
+  imagePaddingColor: string;
   imageOutput: ImageOutputSettings;
 
   // Video actions
@@ -108,6 +111,8 @@ interface AppState {
   setImageFlipV: (val: boolean) => void;
   setImageCropRect: (rect: { x: number; y: number; w: number; h: number }) => void;
   setImageCropEnabled: (val: boolean) => void;
+  setImagePadding: (val: number) => void;
+  setImagePaddingColor: (color: string) => void;
   setImageOutput: (patch: Partial<ImageOutputSettings>) => void;
   resetImageEdit: () => void;
 
@@ -164,13 +169,15 @@ const DEFAULT_IMAGE_OUTPUT: ImageOutputSettings = {
   lockAspectRatio: true,
 };
 
-/** 重置图片编辑状态（旋转/翻转/裁剪/裁剪开关），不清理文件信息 */
+/** 重置图片编辑状态（旋转/翻转/裁剪/裁剪开关/内边距），不清理文件信息 */
 const resetImageEditState = () => ({
   imageRotation: 0,
   imageFlipH: false,
   imageFlipV: false,
   imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
   imageCropEnabled: false,
+  imagePadding: 0,
+  imagePaddingColor: "transparent",
   imageOutput: { ...DEFAULT_IMAGE_OUTPUT },
 });
 
@@ -223,6 +230,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   imageFlipV: false,
   imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
   imageCropEnabled: false,
+  imagePadding: 0,
+  imagePaddingColor: "transparent",
   imageOutput: { ...DEFAULT_IMAGE_OUTPUT },
 
   // Icon
@@ -384,6 +393,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setImageFlipV: (val) => set({ imageFlipV: val }),
   setImageCropRect: (rect) => set({ imageCropRect: rect }),
   setImageCropEnabled: (val) => set({ imageCropEnabled: val }),
+  setImagePadding: (val) => set({ imagePadding: val }),
+  setImagePaddingColor: (color) => set({ imagePaddingColor: color }),
   setImageOutput: (patch) =>
     set((s) => ({ imageOutput: { ...s.imageOutput, ...patch } })),
   resetImageEdit: () => set({ ...resetImageEditState() }),

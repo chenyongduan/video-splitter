@@ -126,28 +126,30 @@ function normalizeRotation(rotation: number): 0 | 90 | 180 | 270 {
 }
 
 /**
- * 计算应用旋转（和可选裁剪）后的图片尺寸。
- * crop 的 w/h 为 0 或 null 表示未裁剪，返回旋转后的完整尺寸。
+ * 计算应用旋转（和可选裁剪、内边距）后的图片尺寸。
+ * crop 的 w/h 为 0 或 null 表示未裁剪；padding 四边统一，默认 0。
  */
 export function getEditedDimensions(
   imageInfo: ImageInfo,
   rotation: number,
-  crop: ImageCropRect | null
+  crop: ImageCropRect | null,
+  padding = 0
 ): { width: number; height: number } {
   const rot = normalizeRotation(rotation);
   const swapped = rot === 90 || rot === 270;
   const base = swapped
     ? { width: imageInfo.height, height: imageInfo.width }
     : { width: imageInfo.width, height: imageInfo.height };
-  if (crop && crop.w > 0 && crop.h > 0) {
-    return { width: crop.w, height: crop.h };
-  }
-  return base;
+  const content =
+    crop && crop.w > 0 && crop.h > 0
+      ? { width: crop.w, height: crop.h }
+      : base;
+  return { width: content.width + padding * 2, height: content.height + padding * 2 };
 }
 
 /**
  * 把编辑状态 + 输出设置解析为一次 FFmpeg 调用所需的参数。
- * 滤镜链顺序：旋转/翻转 → 裁剪 → 缩放。
+ * 滤镜链顺序：旋转/翻转 → 裁剪 → 内边距 → 缩放。
  * 裁剪坐标定义在"旋转+翻转后"的图上，与预览所见一致。
  */
 export function resolveImageProcessParams(
@@ -157,6 +159,9 @@ export function resolveImageProcessParams(
     flipH: boolean;
     flipV: boolean;
     crop: ImageCropRect | null;
+    padding: number;
+    /** "#RRGGBB" 或 "transparent" */
+    paddingColor: string;
   },
   output: ImageOutputSettings
 ): ImageProcessParams {
@@ -185,8 +190,21 @@ export function resolveImageProcessParams(
     );
   }
 
-  // 缩放
-  const edited = getEditedDimensions(imageInfo, rotation, edit.crop);
+  // 内边距（颜色按输出格式解析：无 alpha 通道的格式透明回退为白色）
+  if (edit.padding > 0) {
+    const alphaCapable = ["png", "webp", "tiff", "gif", "ico"].includes(format);
+    let padColor = edit.paddingColor;
+    if (padColor === "transparent") {
+      padColor = alphaCapable ? "black@0.0" : "white";
+    }
+    const content = getEditedDimensions(imageInfo, rotation, edit.crop);
+    filters.push(
+      `pad=${content.width + edit.padding * 2}:${content.height + edit.padding * 2}:${edit.padding}:${edit.padding}:color=${padColor}`
+    );
+  }
+
+  // 缩放（基准为含内边距的尺寸）
+  const edited = getEditedDimensions(imageInfo, rotation, edit.crop, edit.padding);
   let finalW = edited.width;
   let finalH = edited.height;
   if (output.sizeMode === "percent") {
