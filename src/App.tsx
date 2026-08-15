@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { Layout, Popover, Tabs } from "antd";
 import { useAppStore } from "./store/segmentStore";
 import VideoPage from "./pages/video";
@@ -28,6 +29,18 @@ const App: React.FC = () => {
       setActiveTab(saved as AppTab);
     }
   }, [setActiveTab]);
+
+  // Ctrl+Shift+F12 打开/关闭控制台（正式包也可用）
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "F12") {
+        e.preventDefault();
+        invoke("toggle_devtools").catch(() => {});
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // 日志页打开大文件后，切走再切回时保留拆行和虚拟列表测量缓存。
   useEffect(() => {

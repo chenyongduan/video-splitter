@@ -2,6 +2,16 @@ mod json_editor;
 
 use std::sync::Mutex;
 
+/// Ctrl+Shift+F12 触发，打开/关闭 WebView 控制台（devtools feature 保证正式包可用）
+#[tauri::command]
+fn toggle_devtools(window: tauri::WebviewWindow) {
+    if window.is_devtools_open() {
+        window.close_devtools();
+    } else {
+        window.open_devtools();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -15,6 +25,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(Mutex::new(json_editor::JsonEditorState::default()))
         .invoke_handler(tauri::generate_handler![
+            toggle_devtools,
             json_editor::json_open_file,
             json_editor::json_toggle_collapse,
             json_editor::json_update_node,
