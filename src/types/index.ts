@@ -50,7 +50,7 @@ export interface VideoProcessResult {
 }
 
 // ===== Global =====
-export type AppTab = "video" | "audio" | "image" | "icon" | "json" | "log";
+export type AppTab = "video" | "audio" | "image" | "icon" | "json" | "qrcode" | "log";
 
 // ===== Audio =====
 export interface AudioInfo {
