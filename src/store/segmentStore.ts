@@ -59,7 +59,6 @@ interface AppState {
   imageFileName: string;
   imageInfo: ImageInfo | null;
   isImageLoaded: boolean;
-  imageFunctionTab: "convert" | "compress" | "resize" | "crop" | "rotate";
   imageProcessResult: ImageProcessResult | null;
   isImageProcessing: boolean;
   imageRotation: number;
@@ -102,7 +101,6 @@ interface AppState {
   // Image actions
   setImageFile: (path: string, fileName: string, info: ImageInfo) => void;
   clearImage: () => void;
-  setImageFunctionTab: (tab: "convert" | "compress" | "resize" | "crop" | "rotate") => void;
   setImageProcessing: (val: boolean) => void;
   setImageProcessResult: (result: ImageProcessResult | null) => void;
   setImageRotation: (val: number) => void;
@@ -218,7 +216,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   imageFileName: "",
   imageInfo: null,
   isImageLoaded: false,
-  imageFunctionTab: "convert",
   imageProcessResult: null,
   isImageProcessing: false,
   imageRotation: 0,
@@ -380,7 +377,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       ...resetImageEditState(),
     }),
 
-  setImageFunctionTab: (tab) => set({ imageFunctionTab: tab }),
   setImageProcessing: (val) => set({ isImageProcessing: val }),
   setImageProcessResult: (result) => set({ imageProcessResult: result }),
   setImageRotation: (val) => set({ imageRotation: val }),

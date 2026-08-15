@@ -104,40 +104,7 @@ export interface ImageInfo {
   bitDepth: number;
 }
 
-export type ImageTaskType =
-  | "export"
-  | "convert"
-  | "compress"
-  | "resize"
-  | "crop"
-  | "rotate";
-
-export interface ImageConvertParams {
-  outputFormat: string;
-}
-
-export interface ImageCompressParams {
-  quality: number;
-}
-
-export interface ImageResizeParams {
-  width: number;
-  height: number;
-  keepAspectRatio: boolean;
-}
-
-export interface ImageCropParams {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface ImageRotateParams {
-  rotation: 0 | 90 | 180 | 270;
-  flipHorizontal: boolean;
-  flipVertical: boolean;
-}
+export type ImageTaskType = "export";
 
 export interface ImageCropRect {
   x: number;
