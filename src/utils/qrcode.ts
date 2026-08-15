@@ -10,9 +10,28 @@ export const QR_MAX_BYTES = 2953;
 export const textByteLength = (text: string): number =>
   new TextEncoder().encode(text).length;
 
-/** 从二维码容器中取出 canvas 元素 */
-export const getQrCanvas = (container: HTMLElement | null): HTMLCanvasElement | null =>
-  container?.querySelector("canvas") ?? null;
+/**
+ * 从二维码容器中取出 canvas 元素。
+ * antd QRCode 会按设备像素比放大画布（如 Retina 下 300 显示为 600 像素），
+ * 传入 size 时会重绘到精确的目标像素尺寸，保证导出图片与所选尺寸一致。
+ */
+export const getQrCanvas = (
+  container: HTMLElement | null,
+  size?: number,
+): HTMLCanvasElement | null => {
+  const canvas = container?.querySelector("canvas") ?? null;
+  if (!canvas || size === undefined || canvas.width === size) return canvas;
+
+  const normalized = document.createElement("canvas");
+  normalized.width = size;
+  normalized.height = size;
+  const context = normalized.getContext("2d");
+  if (!context) return canvas;
+  // 二维码是纯色块，禁用平滑避免缩小时边缘发虚
+  context.imageSmoothingEnabled = false;
+  context.drawImage(canvas, 0, 0, size, size);
+  return normalized;
+};
 
 /** 弹出保存对话框，把 canvas 内容导出为 PNG 文件 */
 export const downloadQrPng = async (

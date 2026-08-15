@@ -96,7 +96,7 @@ const QrCodePage: React.FC = () => {
   };
 
   const handleDownload = async () => {
-    const canvas = getQrCanvas(exportRef.current);
+    const canvas = getQrCanvas(exportRef.current, qrSize);
     if (!canvas) return;
     try {
       await downloadQrPng(canvas);
@@ -108,7 +108,7 @@ const QrCodePage: React.FC = () => {
   };
 
   const handleCopy = async () => {
-    const canvas = getQrCanvas(exportRef.current);
+    const canvas = getQrCanvas(exportRef.current, qrSize);
     if (!canvas) return;
     try {
       await copyQrImage(canvas);
@@ -296,13 +296,13 @@ const QrCodePage: React.FC = () => {
       </div>
       {qrValue && (
         <div ref={exportRef} style={{ display: "none" }} aria-hidden>
-          {/* marginSize 静区：QR 规范建议四周留 4 个模块的白边，保证扫码识别 */}
+          {/* marginSize 静区：导出图片四周留 2 个模块的白边 */}
           <QRCode
             value={qrValue}
             type="canvas"
             size={qrSize}
             errorLevel="M"
-            marginSize={4}
+            marginSize={2}
           />
         </div>
       )}
