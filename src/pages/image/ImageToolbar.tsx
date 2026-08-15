@@ -153,7 +153,7 @@ const ImageToolbar: React.FC = () => {
             {!isTransparent && (
               <ColorPicker
                 value={paddingColor}
-                onChange={(_: Color, hex: string) => setPaddingColor(hex)}
+                onChange={(color: Color) => setPaddingColor(color.toHexString())}
                 disabledAlpha
               />
             )}

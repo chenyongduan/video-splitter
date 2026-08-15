@@ -196,6 +196,9 @@ export function resolveImageProcessParams(
     let padColor = edit.paddingColor;
     if (padColor === "transparent") {
       padColor = alphaCapable ? "black@0.0" : "white";
+    } else if (!/^#[0-9a-fA-F]{6}$/.test(padColor)) {
+      // 防御：非法颜色值（如 rgb() 字符串里的逗号会破坏 filtergraph）回退为白色
+      padColor = "white";
     }
     const content = getEditedDimensions(imageInfo, rotation, edit.crop);
     filters.push(
