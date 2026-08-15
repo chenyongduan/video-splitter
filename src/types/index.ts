@@ -104,7 +104,13 @@ export interface ImageInfo {
   bitDepth: number;
 }
 
-export type ImageTaskType = "convert" | "compress" | "resize" | "crop" | "rotate";
+export type ImageTaskType =
+  | "export"
+  | "convert"
+  | "compress"
+  | "resize"
+  | "crop"
+  | "rotate";
 
 export interface ImageConvertParams {
   outputFormat: string;
