@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useAppStore } from "../../store/segmentStore";
+import { getEditedDimensions } from "../../utils/image";
 
 type DragType = "move" | "nw" | "ne" | "sw" | "se" | "n" | "s" | "w" | "e";
 
@@ -20,8 +21,12 @@ const CropOverlay: React.FC<{
   imgDisplay: ImgDisplay;
 }> = ({ imgDisplay }) => {
   const imageInfo = useAppStore((s) => s.imageInfo);
+  const rotation = useAppStore((s) => s.imageRotation);
   const cropRect = useAppStore((s) => s.imageCropRect);
   const setCropRect = useAppStore((s) => s.setImageCropRect);
+
+  // 旋转后的基准尺寸（不含裁剪）：90/270 时宽高互换
+  const base = imageInfo ? getEditedDimensions(imageInfo, rotation, null) : null;
 
   // 拖拽状态
   const dragRef = useRef<{
@@ -31,22 +36,15 @@ const CropOverlay: React.FC<{
     startRect: { x: number; y: number; w: number; h: number };
   } | null>(null);
 
-  // 初始化裁剪区域为整张图片
-  useEffect(() => {
-    if (imageInfo && cropRect.w === 0 && cropRect.h === 0) {
-      setCropRect({ x: 0, y: 0, w: imageInfo.width, h: imageInfo.height });
-    }
-  }, [imageInfo, cropRect.w, cropRect.h, setCropRect]);
-
   const imgToPx = useCallback(
     (ix: number, iy: number) => {
       const d = imgDisplay;
       return {
-        px: d.offsetX + (ix / (imageInfo?.width ?? 1)) * d.width,
-        py: d.offsetY + (iy / (imageInfo?.height ?? 1)) * d.height,
+        px: d.offsetX + (ix / (base?.width ?? 1)) * d.width,
+        py: d.offsetY + (iy / (base?.height ?? 1)) * d.height,
       };
     },
-    [imgDisplay, imageInfo]
+    [imgDisplay, base]
   );
 
   // 鼠标按下
@@ -63,15 +61,15 @@ const CropOverlay: React.FC<{
 
       const handleMouseMove = (ev: MouseEvent) => {
         const drag = dragRef.current;
-        if (!drag || !imageInfo) return;
+        if (!drag || !base) return;
 
         const dx = ev.clientX - drag.startMouseX;
         const dy = ev.clientY - drag.startMouseY;
 
         // 像素偏移 → 图片像素偏移
         const d = imgDisplay;
-        const scaleX = imageInfo.width / d.width;
-        const scaleY = imageInfo.height / d.height;
+        const scaleX = base.width / d.width;
+        const scaleY = base.height / d.height;
         const imgDx = dx * scaleX;
         const imgDy = dy * scaleY;
 
@@ -83,24 +81,24 @@ const CropOverlay: React.FC<{
         const minSize = 10;
 
         if (dragType === "move") {
-          newX = Math.max(0, Math.min(startRect.x + imgDx, imageInfo.width - startRect.w));
-          newY = Math.max(0, Math.min(startRect.y + imgDy, imageInfo.height - startRect.h));
+          newX = Math.max(0, Math.min(startRect.x + imgDx, base.width - startRect.w));
+          newY = Math.max(0, Math.min(startRect.y + imgDy, base.height - startRect.h));
         } else {
           if (dragType.includes("w")) {
             newX = Math.max(0, startRect.x + imgDx);
             newW = Math.max(minSize, startRect.w - imgDx);
-            if (newX + newW > imageInfo.width) newW = imageInfo.width - newX;
+            if (newX + newW > base.width) newW = base.width - newX;
           }
           if (dragType.includes("e")) {
-            newW = Math.max(minSize, Math.min(startRect.w + imgDx, imageInfo.width - startRect.x));
+            newW = Math.max(minSize, Math.min(startRect.w + imgDx, base.width - startRect.x));
           }
           if (dragType.includes("n")) {
             newY = Math.max(0, startRect.y + imgDy);
             newH = Math.max(minSize, startRect.h - imgDy);
-            if (newY + newH > imageInfo.height) newH = imageInfo.height - newY;
+            if (newY + newH > base.height) newH = base.height - newY;
           }
           if (dragType.includes("s")) {
-            newH = Math.max(minSize, Math.min(startRect.h + imgDy, imageInfo.height - startRect.y));
+            newH = Math.max(minSize, Math.min(startRect.h + imgDy, base.height - startRect.y));
           }
         }
 
@@ -116,10 +114,10 @@ const CropOverlay: React.FC<{
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     },
-    [cropRect, imageInfo, setCropRect, imgDisplay]
+    [cropRect, base, setCropRect, imgDisplay]
   );
 
-  if (!imageInfo || cropRect.w === 0) return null;
+  if (!base || cropRect.w === 0) return null;
 
   const d = imgDisplay;
 
@@ -246,7 +244,7 @@ const CropOverlay: React.FC<{
 
 const ImagePreview: React.FC = () => {
   const imagePath = useAppStore((s) => s.imagePath);
-  const imageFunctionTab = useAppStore((s) => s.imageFunctionTab);
+  const imageCropEnabled = useAppStore((s) => s.imageCropEnabled);
   const imageRotation = useAppStore((s) => s.imageRotation);
   const imageFlipH = useAppStore((s) => s.imageFlipH);
   const imageFlipV = useAppStore((s) => s.imageFlipV);
@@ -289,24 +287,23 @@ const ImagePreview: React.FC = () => {
 
   const src = convertFileSrc(imagePath);
 
-  // 只在旋转 tab 下应用 transform 预览
-  const showTransform = imageFunctionTab === "rotate";
+  // 编辑状态实时预览：旋转 + 翻转
   const transforms: string[] = [];
-  if (showTransform && imageRotation !== 0) {
+  if (imageRotation !== 0) {
     transforms.push(`rotate(${imageRotation}deg)`);
   }
-  if (showTransform && imageFlipH) {
+  if (imageFlipH) {
     transforms.unshift("scaleX(-1)");
   }
-  if (showTransform && imageFlipV) {
+  if (imageFlipV) {
     transforms.unshift("scaleY(-1)");
   }
   const transform = transforms.length > 0 ? transforms.join(" ") : undefined;
 
-  const showCrop = imageFunctionTab === "crop";
+  const showCrop = imageCropEnabled;
 
   // 旋转 90/270 度时交换 maxWidth / maxHeight 约束
-  const absRotation = showTransform ? (((imageRotation % 360) + 360) % 360) : 0;
+  const absRotation = (((imageRotation % 360) + 360) % 360) as number;
   const isRotated = absRotation === 90 || absRotation === 270;
 
   return (
@@ -343,7 +340,7 @@ const ImagePreview: React.FC = () => {
           objectFit: "contain",
           borderRadius: 4,
           transform,
-          transition: showTransform ? "transform 0.2s ease" : "none",
+          transition: "transform 0.2s ease",
           pointerEvents: showCrop ? "none" : undefined,
         }}
       />
