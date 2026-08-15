@@ -53,13 +53,13 @@ const OutputSettings: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
 
-  // 编辑后（旋转+裁剪+内边距）尺寸
+  // 编辑后（旋转+裁剪）尺寸 — 内边距不改变总尺寸
   const edited = useMemo(
     () =>
       imageInfo
-        ? getEditedDimensions(imageInfo, rotation, cropRect, padding)
+        ? getEditedDimensions(imageInfo, rotation, cropRect)
         : null,
-    [imageInfo, rotation, cropRect, padding]
+    [imageInfo, rotation, cropRect]
   );
 
   const resolvedFormat =

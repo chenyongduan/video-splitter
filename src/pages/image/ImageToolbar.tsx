@@ -43,6 +43,18 @@ const ImageToolbar: React.FC = () => {
   // 旋转后的基准尺寸（不含裁剪）
   const base = imageInfo ? getEditedDimensions(imageInfo, rotation, null) : null;
 
+  // 内边距上限：内容等比缩小后不能为空，需小于内容（含裁剪）最短边的一半
+  const content = imageInfo
+    ? getEditedDimensions(
+        imageInfo,
+        rotation,
+        cropEnabled && cropRect.w > 0 && cropRect.h > 0 ? cropRect : null
+      )
+    : null;
+  const maxPadding = content
+    ? Math.max(0, Math.floor((Math.min(content.width, content.height) - 1) / 2))
+    : 0;
+
   // 旋转变化导致基准尺寸改变时，已启用的裁剪框可能越界 → 重置为完整尺寸
   useEffect(() => {
     if (cropEnabled && base) {
@@ -50,6 +62,14 @@ const ImageToolbar: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rotation, cropEnabled]);
+
+  // 内容变小（如旋转/裁剪）时，已设置的内边距可能越界 → 钳制
+  useEffect(() => {
+    if (padding > maxPadding) {
+      setPadding(maxPadding);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxPadding]);
 
   const handleToggleCrop = () => {
     if (!imageInfo || !base) return;
@@ -129,9 +149,9 @@ const ImageToolbar: React.FC = () => {
           <Text style={{ fontSize: 13, color: "#666" }}>内边距：</Text>
           <InputNumber
             min={0}
-            max={500}
+            max={maxPadding}
             value={padding}
-            onChange={(v) => setPadding(v ?? 0)}
+            onChange={(v) => setPadding(Math.max(0, Math.min(v ?? 0, maxPadding)))}
             style={{ width: 80 }}
           />
         </Space>

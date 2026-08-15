@@ -244,6 +244,7 @@ const CropOverlay: React.FC<{
 
 const ImagePreview: React.FC = () => {
   const imagePath = useAppStore((s) => s.imagePath);
+  const imageInfo = useAppStore((s) => s.imageInfo);
   const imageCropEnabled = useAppStore((s) => s.imageCropEnabled);
   const imageRotation = useAppStore((s) => s.imageRotation);
   const imageFlipH = useAppStore((s) => s.imageFlipH);
@@ -251,42 +252,59 @@ const ImagePreview: React.FC = () => {
   const imagePadding = useAppStore((s) => s.imagePadding);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const [imgDisplay, setImgDisplay] = useState<ImgDisplay>({ width: 0, height: 0, offsetX: 0, offsetY: 0 });
-  const [baseHeight, setBaseHeight] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
 
-  // 直接测量 img 元素相对于容器的位置和尺寸
-  const measureImg = useCallback(() => {
-    const container = containerRef.current;
-    const img = imgRef.current;
-    if (!container || !img) return;
-
-    const cRect = container.getBoundingClientRect();
-    const iRect = img.getBoundingClientRect();
-
-    setImgDisplay({
-      width: iRect.width,
-      height: iRect.height,
-      offsetX: iRect.left - cRect.left,
-      offsetY: iRect.top - cRect.top,
-    });
-  }, []);
-
-  // 图片加载完成 + 容器尺寸变化时重新测量
+  // 容器宽度变化时重新计算显示尺寸
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    const observer = new ResizeObserver(() => {
-      measureImg();
-    });
+    const update = () => setContainerWidth(el.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [measureImg]);
+  }, [imagePath]);
 
-  if (!imagePath) return null;
+  if (!imagePath || !imageInfo) return null;
 
-  const src = convertFileSrc(imagePath);
+  // 旋转后的基准尺寸（即画布尺寸，内边距不改变总尺寸）
+  const base = getEditedDimensions(imageInfo, imageRotation, null);
+  const absRotation = (((imageRotation % 360) + 360) % 360) as number;
+  const isRotated = absRotation === 90 || absRotation === 270;
+
+  // 显示比例：不超过容器宽度与 320px 高度，也不放大原图
+  const scale =
+    containerWidth > 0
+      ? Math.min(1, containerWidth / base.width, 320 / base.height)
+      : 0;
+
+  // 内边距：内容等比缩进画布（与导出的 force_original_aspect_ratio=decrease 一致）
+  const padding = Math.min(
+    imagePadding,
+    Math.floor((Math.min(base.width, base.height) - 1) / 2)
+  );
+  const contentScale =
+    padding > 0
+      ? scale *
+        Math.min(
+          (base.width - padding * 2) / base.width,
+          (base.height - padding * 2) / base.height
+        )
+      : scale;
+
+  const canvasH = base.height * scale;
+  const imgW = base.width * contentScale;
+  const imgH = base.height * contentScale;
+  const padPx = padding * scale;
+
+  // 裁剪遮罩映射到实际显示的图片区域（内容在画布/边距内居中）
+  const imgDisplay: ImgDisplay = {
+    width: imgW,
+    height: imgH,
+    offsetX: (containerWidth - imgW) / 2,
+    offsetY: 12 + (canvasH - imgH) / 2,
+  };
 
   // 编辑状态实时预览：旋转 + 翻转
   const transforms: string[] = [];
@@ -303,10 +321,6 @@ const ImagePreview: React.FC = () => {
 
   const showCrop = imageCropEnabled;
 
-  // 旋转 90/270 度时交换 maxWidth / maxHeight 约束
-  const absRotation = (((imageRotation % 360) + 360) % 360) as number;
-  const isRotated = absRotation === 90 || absRotation === 270;
-
   return (
     <div
       ref={containerRef}
@@ -321,42 +335,27 @@ const ImagePreview: React.FC = () => {
         borderRadius: 8,
         overflow: "hidden",
         userSelect: "none",
-        minHeight: baseHeight || undefined,
+        minHeight: scale > 0 ? undefined : 200,
       }}
     >
-      {/* 内边距包裹层：承担 padding，不改变 img 自身的测量。
-          预览用白底让边距可见，导出时仍为透明 */}
-      <div
+      {/* 内边距预览：白边画在图片自身 border 上（box-sizing: border-box），
+          画布总尺寸不变；导出时边距为透明 */}
+      <img
+        src={convertFileSrc(imagePath)}
+        alt="预览"
         style={{
-          padding: imagePadding,
-          background: imagePadding > 0 ? "#fff" : undefined,
+          width: (isRotated ? base.height : base.width) * scale,
+          height: (isRotated ? base.width : base.height) * scale,
+          objectFit: "contain",
+          boxSizing: "border-box",
+          border: padding > 0 ? `${padPx}px solid #fff` : undefined,
           borderRadius: 4,
-          lineHeight: 0,
+          transform,
+          transition: "transform 0.2s ease",
+          pointerEvents: showCrop ? "none" : undefined,
+          display: "block",
         }}
-      >
-        <img
-          ref={imgRef}
-          src={src}
-          alt="预览"
-          onLoad={() => {
-            measureImg();
-            // 记录初始容器高度（未旋转时）
-            if (containerRef.current && !baseHeight) {
-              setBaseHeight(containerRef.current.clientHeight);
-            }
-          }}
-          style={{
-            maxWidth: isRotated ? 320 : "100%",
-            maxHeight: 320,
-            objectFit: "contain",
-            borderRadius: 4,
-            transform,
-            transition: "transform 0.2s ease",
-            pointerEvents: showCrop ? "none" : undefined,
-            display: "block",
-          }}
-        />
-      </div>
+      />
       {/* 裁剪遮罩层 */}
       {showCrop && imgDisplay.width > 0 && (
         <CropOverlay imgDisplay={imgDisplay} />

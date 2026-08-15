@@ -110,7 +110,7 @@ export async function getImageInfo(filePath: string): Promise<ImageInfo> {
 }
 
 export interface ImageProcessParams {
-  /** FFmpeg 滤镜链（有序：旋转/翻转 → 裁剪 → 缩放） */
+  /** FFmpeg 滤镜链（有序：旋转/翻转 → 裁剪 → 内边距 → 缩放） */
   filters: string[];
   /** 输出编码质量参数（如 ["-q:v", "20"]），无损/无参格式为空数组 */
   qualityArgs: string[];
@@ -126,31 +126,31 @@ function normalizeRotation(rotation: number): 0 | 90 | 180 | 270 {
 }
 
 /**
- * 计算应用旋转（和可选裁剪、内边距）后的图片尺寸。
- * crop 的 w/h 为 0 或 null 表示未裁剪；padding 四边统一，默认 0。
+ * 计算应用旋转（和可选裁剪）后的图片尺寸。
+ * 内边距不改变总尺寸（内容等比缩小补边），因此无需参与计算。
+ * crop 的 w/h 为 0 或 null 表示未裁剪。
  */
 export function getEditedDimensions(
   imageInfo: ImageInfo,
   rotation: number,
-  crop: ImageCropRect | null,
-  padding = 0
+  crop: ImageCropRect | null
 ): { width: number; height: number } {
   const rot = normalizeRotation(rotation);
   const swapped = rot === 90 || rot === 270;
   const base = swapped
     ? { width: imageInfo.height, height: imageInfo.width }
     : { width: imageInfo.width, height: imageInfo.height };
-  const content =
-    crop && crop.w > 0 && crop.h > 0
-      ? { width: crop.w, height: crop.h }
-      : base;
-  return { width: content.width + padding * 2, height: content.height + padding * 2 };
+  if (crop && crop.w > 0 && crop.h > 0) {
+    return { width: crop.w, height: crop.h };
+  }
+  return base;
 }
 
 /**
  * 把编辑状态 + 输出设置解析为一次 FFmpeg 调用所需的参数。
  * 滤镜链顺序：旋转/翻转 → 裁剪 → 内边距 → 缩放。
  * 裁剪坐标定义在"旋转+翻转后"的图上，与预览所见一致。
+ * 内边距不改变总尺寸：内容等比缩小（不变形）后居中补边。
  */
 export function resolveImageProcessParams(
   imageInfo: ImageInfo,
@@ -188,18 +188,29 @@ export function resolveImageProcessParams(
     );
   }
 
-  // 内边距：固定透明；无 alpha 通道的输出格式回退为白色
+  // 内边距：总尺寸不变，内容等比缩到画布内（不变形）后居中补边。
+  // 固定透明；无 alpha 通道的输出格式回退为白色。
   if (edit.padding > 0) {
+    const content = getEditedDimensions(imageInfo, rotation, edit.crop);
+    const minSide = Math.min(content.width, content.height);
+    if (edit.padding * 2 >= minSide) {
+      throw new Error(
+        `内边距 ${edit.padding}px 过大，需小于内容最短边的一半（${Math.floor(minSide / 2)}px）`
+      );
+    }
     const alphaCapable = ["png", "webp", "tiff", "gif", "ico"].includes(format);
     const padColor = alphaCapable ? "black@0.0" : "white";
-    const content = getEditedDimensions(imageInfo, rotation, edit.crop);
+    // force_original_aspect_ratio=decrease：等比缩小到目标框内，与预览 contain 一致
     filters.push(
-      `pad=${content.width + edit.padding * 2}:${content.height + edit.padding * 2}:${edit.padding}:${edit.padding}:color=${padColor}`
+      `scale=${content.width - edit.padding * 2}:${content.height - edit.padding * 2}:force_original_aspect_ratio=decrease`
+    );
+    filters.push(
+      `pad=${content.width}:${content.height}:${edit.padding}:${edit.padding}:color=${padColor}`
     );
   }
 
-  // 缩放（基准为含内边距的尺寸）
-  const edited = getEditedDimensions(imageInfo, rotation, edit.crop, edit.padding);
+  // 缩放（基准为编辑后尺寸，内边距不改变总尺寸）
+  const edited = getEditedDimensions(imageInfo, rotation, edit.crop);
   let finalW = edited.width;
   let finalH = edited.height;
   if (output.sizeMode === "percent") {
