@@ -9,6 +9,7 @@ import type {
   AudioProcessResult,
   ImageInfo,
   ImageProcessResult,
+  ImageOutputSettings,
   IconInfo,
   IconExportResult,
   AppTab,
@@ -65,6 +66,8 @@ interface AppState {
   imageFlipH: boolean;
   imageFlipV: boolean;
   imageCropRect: { x: number; y: number; w: number; h: number };
+  imageCropEnabled: boolean;
+  imageOutput: ImageOutputSettings;
 
   // Video actions
   setVideo: (path: string, fileName: string, info: VideoInfo) => void;
@@ -106,6 +109,9 @@ interface AppState {
   setImageFlipH: (val: boolean) => void;
   setImageFlipV: (val: boolean) => void;
   setImageCropRect: (rect: { x: number; y: number; w: number; h: number }) => void;
+  setImageCropEnabled: (val: boolean) => void;
+  setImageOutput: (patch: Partial<ImageOutputSettings>) => void;
+  resetImageEdit: () => void;
 
   // Icon state
   iconPath: string;
@@ -149,6 +155,26 @@ interface AppState {
   setLogText: (text: string) => void;
   clearLog: () => void;
 }
+
+const DEFAULT_IMAGE_OUTPUT: ImageOutputSettings = {
+  format: "original",
+  quality: 80,
+  sizeMode: "auto",
+  scalePercent: 100,
+  width: 0,
+  height: 0,
+  lockAspectRatio: true,
+};
+
+/** 重置图片编辑状态（旋转/翻转/裁剪/裁剪开关），不清理文件信息 */
+const resetImageEditState = () => ({
+  imageRotation: 0,
+  imageFlipH: false,
+  imageFlipV: false,
+  imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
+  imageCropEnabled: false,
+  imageOutput: { ...DEFAULT_IMAGE_OUTPUT },
+});
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Global
@@ -199,6 +225,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   imageFlipH: false,
   imageFlipV: false,
   imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
+  imageCropEnabled: false,
+  imageOutput: { ...DEFAULT_IMAGE_OUTPUT },
 
   // Icon
   iconPath: "",
@@ -338,6 +366,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       imageInfo: info,
       isImageLoaded: true,
       imageProcessResult: null,
+      ...resetImageEditState(),
     }),
 
   clearImage: () =>
@@ -346,13 +375,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       imageFileName: "",
       imageInfo: null,
       isImageLoaded: false,
-      imageFunctionTab: "convert",
       imageProcessResult: null,
       isImageProcessing: false,
-      imageRotation: 0,
-      imageFlipH: false,
-      imageFlipV: false,
-      imageCropRect: { x: 0, y: 0, w: 0, h: 0 },
+      ...resetImageEditState(),
     }),
 
   setImageFunctionTab: (tab) => set({ imageFunctionTab: tab }),
@@ -362,6 +387,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setImageFlipH: (val) => set({ imageFlipH: val }),
   setImageFlipV: (val) => set({ imageFlipV: val }),
   setImageCropRect: (rect) => set({ imageCropRect: rect }),
+  setImageCropEnabled: (val) => set({ imageCropEnabled: val }),
+  setImageOutput: (patch) =>
+    set((s) => ({ imageOutput: { ...s.imageOutput, ...patch } })),
+  resetImageEdit: () => set({ ...resetImageEditState() }),
 
   // Icon actions
   setIconFile: (path, fileName, info) =>
