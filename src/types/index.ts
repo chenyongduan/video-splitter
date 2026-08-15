@@ -133,6 +133,36 @@ export interface ImageRotateParams {
   flipVertical: boolean;
 }
 
+export interface ImageCropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export type ImageOutputFormat =
+  | "original"
+  | "png"
+  | "jpg"
+  | "webp"
+  | "bmp"
+  | "ico"
+  | "tiff"
+  | "gif";
+
+export interface ImageOutputSettings {
+  format: ImageOutputFormat;
+  /** 1-100，仅 jpg/webp 生效 */
+  quality: number;
+  sizeMode: "auto" | "percent" | "custom";
+  /** sizeMode === "percent" 时生效，1-1000（100 = 原尺寸） */
+  scalePercent: number;
+  /** sizeMode === "custom" 时生效 */
+  width: number;
+  height: number;
+  lockAspectRatio: boolean;
+}
+
 export interface ImageProcessResult {
   inputPath: string;
   outputPath: string;
